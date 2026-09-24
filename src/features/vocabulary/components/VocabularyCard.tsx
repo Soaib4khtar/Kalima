@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,13 +15,15 @@ import type { VocabularyWord } from "../data/vocabulary";
 interface VocabularyCardProps {
   word: VocabularyWord;
   showAnswer: boolean;
-  onRevel: () => void;
+  onReveal: () => void;
+  children?: ReactNode;
 }
 
 export function VocabularyCard ({
   word,
   showAnswer,
-  onRevel,
+  onReveal,
+  children,
 }: VocabularyCardProps) {
   return (
     <Card className= "w-full max-w-xl">
@@ -64,13 +68,15 @@ export function VocabularyCard ({
       </CardContent>
 
       <CardFooter>
-        {!showAnswer && (
+        {!showAnswer ? (
           <Button 
             className="w-full"
-            onClick={onRevel}
+            onClick={onReveal}
           >
             Show Arabic
           </Button>  
+        ) : (
+          children
         )}
       </CardFooter>
     </Card>
