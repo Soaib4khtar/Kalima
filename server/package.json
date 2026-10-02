@@ -1,5 +1,5 @@
 {
-  "name": "server",
+  "name": "kalima-server",
   "version": "1.0.0",
   "description": "Kalima backend API",
   "type": "module",
