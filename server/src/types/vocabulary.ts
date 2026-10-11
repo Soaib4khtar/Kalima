@@ -1,24 +1,14 @@
-export interface VocabularyWord {
-  id: string;
-  english: string;
-  arabic: string;
-  transliteration: string;
-  category: string;
-  level: string;
-}
+import type * as z from "zod";
 
-export interface CreateVocabularyInput {
-  english: string;
-  arabic: string;
-  transliteration: string;
-  category: string;
-  level: string;
-}
+import {
+  createVocabularySchema,
+  updateVocabularySchema,
+} from "../schemas/vocabulary.schema.js";
 
-export interface UpdateVocabularyInput {
-  english?: string;
-  arabic?: string;
-  transliteration?: string;
-  category?: string;
-  level?: string;
-}
+export type CreateVocabularyInput = z.infer<
+  typeof createVocabularySchema
+>;
+
+export type UpdateVocabularyInput = z.infer<
+  typeof updateVocabularySchema
+>;

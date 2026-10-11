@@ -1,8 +1,10 @@
-import type { VocabularyWord } from "../data/vocabulary";
+// We now use the API type instead of the old static data type.
+// ApiVocabularyWord matches what the Express server actually returns.
+import type { ApiVocabularyWord } from "@/lib/api";
 import { VocabularyListItem } from "./VocabularyListItem";
 
 interface VocabularyListProps {
-  words: VocabularyWord[];
+  words: ApiVocabularyWord[];
 }
 
 export function VocabularyList({

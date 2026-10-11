@@ -8,16 +8,46 @@ import {
   updateVocabularyWord,
 } from "../controllers/vocabulary.controller.js";
 
+import { validate } from "../middlewares/validate.middleware.js";
+
+import {
+  createVocabularySchema,
+  updateVocabularySchema,
+  vocabularyIdSchema,
+  vocabularyQuerySchema,
+} from "../schemas/vocabulary.schema.js";
+
 const router = Router();
 
-router.get("/", getVocabulary);
+router.get(
+  "/",
+  validate("query", vocabularyQuerySchema),
+  getVocabulary,
+);
 
-router.get("/:id", getVocabularyWord);
+router.get(
+  "/:id",
+  validate("params", vocabularyIdSchema),
+  getVocabularyWord,
+);
 
-router.post("/", createVocabularyWord);
+router.post(
+  "/",
+  validate("body", createVocabularySchema),
+  createVocabularyWord,
+);
 
-router.patch("/:id", updateVocabularyWord);
+router.patch(
+  "/:id",
+  validate("params", vocabularyIdSchema),
+  validate("body", updateVocabularySchema),
+  updateVocabularyWord,
+);
 
-router.delete("/:id", deleteVocabularyWord);
+router.delete(
+  "/:id",
+  validate("params", vocabularyIdSchema),
+  deleteVocabularyWord,
+);
 
 export default router;

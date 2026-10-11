@@ -17,17 +17,10 @@ export async function getVocabulary(
   req: Request,
   res: Response,
 ) {
-  const search =
-    typeof req.query.search === "string"
-      ? req.query.search
-      : undefined;
-
-  const category =
-    typeof req.query.category === "string"
-      ? req.query.category
-      : undefined;
-
-  const words = await getAllVocabulary(search, category);
+  const words = await getAllVocabulary(
+    req.query.search as string | undefined,
+    req.query.category as string | undefined,
+  );
 
   res.json({
     success: true,
@@ -39,13 +32,17 @@ export async function getVocabularyWord(
   req: Request,
   res: Response,
 ) {
-  const id = req.params.id as string;
-  const word = await getVocabularyById(id);
+  const word = await getVocabularyById(
+    req.params.id as string,
+  );
 
   if (!word) {
     res.status(404).json({
       success: false,
-      message: "Vocabulary word not found",
+      error: {
+        code: "WORD_NOT_FOUND",
+        message: "Vocabulary word not found",
+      },
     });
 
     return;
@@ -61,36 +58,9 @@ export async function createVocabularyWord(
   req: Request,
   res: Response,
 ) {
-  const {
-    english,
-    arabic,
-    transliteration,
-    category,
-    level,
-  } = req.body as CreateVocabularyInput;
+  const input = req.body as CreateVocabularyInput;
 
-  if (
-    !english ||
-    !arabic ||
-    !transliteration ||
-    !category ||
-    !level
-  ) {
-    res.status(400).json({
-      success: false,
-      message: "All vocabulary fields are required",
-    });
-
-    return;
-  }
-
-  const word = await createVocabulary({
-    english,
-    arabic,
-    transliteration,
-    category,
-    level,
-  });
+  const word = await createVocabulary(input);
 
   res.status(201).json({
     success: true,
@@ -102,18 +72,20 @@ export async function updateVocabularyWord(
   req: Request,
   res: Response,
 ) {
-  const id = req.params.id as string;
   const input = req.body as UpdateVocabularyInput;
 
   const word = await updateVocabulary(
-    id,
+    req.params.id as string,
     input,
   );
 
   if (!word) {
     res.status(404).json({
       success: false,
-      message: "Vocabulary word not found",
+      error: {
+        code: "WORD_NOT_FOUND",
+        message: "Vocabulary word not found",
+      },
     });
 
     return;
@@ -129,13 +101,17 @@ export async function deleteVocabularyWord(
   req: Request,
   res: Response,
 ) {
-  const id = req.params.id as string;
-  const word = await deleteVocabulary(id);
+  const word = await deleteVocabulary(
+    req.params.id as string,
+  );
 
   if (!word) {
     res.status(404).json({
       success: false,
-      message: "Vocabulary word not found",
+      error: {
+        code: "WORD_NOT_FOUND",
+        message: "Vocabulary word not found",
+      },
     });
 
     return;

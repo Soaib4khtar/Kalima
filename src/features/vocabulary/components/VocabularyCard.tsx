@@ -10,10 +10,11 @@ import {
 } from "@/components/ui/card";
 
 
-import type { VocabularyWord } from "../data/vocabulary";
+// We now use the API type — this matches what comes from the backend
+import type { ApiVocabularyWord } from "@/lib/api";
 
 interface VocabularyCardProps {
-  word: VocabularyWord;
+  word: ApiVocabularyWord;
   showAnswer: boolean;
   onReveal: () => void;
   children?: ReactNode;
@@ -41,7 +42,9 @@ export function VocabularyCard ({
             English
           </p>
 
-          <h2 className="mt-2 text-4x1 front- bold">
+          {/* text-4xl = large font size. font-bold = bold weight
+               Note: Tailwind classes use 'xl' not 'x1' (letter L not number 1) */}
+          <h2 className="mt-2 text-4xl font-bold">
             {word.english}
           </h2>
         </div>
@@ -52,15 +55,19 @@ export function VocabularyCard ({
               Arabic
             </p>
 
+            {/* dir="rtl" = right-to-left text direction, required for Arabic
+                 lang="ar" = tells the browser this is Arabic text (helps with
+                 font selection and accessibility tools) */}
             <p
-              dir="rt1"
+              dir="rtl"
               lang="ar"
-              className="mt-2 text-5x1 front-bold"
+              className="mt-2 text-5xl font-bold"
             >
               {word.arabic}
             </p>
 
-            <p className="mt-2 text-muted-forground">
+            {/* text-muted-foreground = the grey/subdued text color from our design system */}
+            <p className="mt-2 text-muted-foreground">
               {word.transliteration}
             </p>
           </div>
