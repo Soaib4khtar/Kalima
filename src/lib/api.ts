@@ -47,6 +47,77 @@ export interface VocabularyQueryParams {
   category?: string;
 }
 
+export interface QuranWordOccurrence {
+  sourceId: number;
+  position: number;
+  textUthmani: string;
+  translation?: string;
+  transliteration?: string;
+  audioUrl?: string;
+  reference: {
+    surah: number;
+    ayah: number;
+    word: number;
+    verseKey: string;
+  };
+}
+
+export interface QuranVerseTranslation {
+  sourceId: number;
+  text: string;
+  resourceId: number;
+  resourceName: string;
+}
+
+export interface QuranVerseAudio {
+  url: string;
+  recitationId?: number;
+}
+
+export interface QuranVerse {
+  sourceId: number;
+  number: number;
+  verseKey: string;
+  textUthmani: string;
+  translation?: QuranVerseTranslation;
+  audio?: QuranVerseAudio;
+  words: QuranWordOccurrence[];
+}
+
+export interface QuranSurah {
+  number: number;
+  nameArabic: string;
+  nameTransliterated: string;
+  translatedName: string;
+  verses: QuranVerse[];
+}
+
+export interface QuranAttribution {
+  provider: "Quran Foundation";
+  label: "Quran data provided by Quran.Foundation";
+  url: string;
+  translationName?: string;
+  translationAuthor?: string;
+  translationLanguage?: string;
+  wordTranslationLanguage?: string;
+  recitationName?: string;
+  recitationStyle?: string;
+}
+
+export interface QuranSurahReady {
+  status: "ready";
+  surah: QuranSurah;
+  attribution: QuranAttribution;
+}
+
+export interface QuranSurahNotReady {
+  status: "unconfigured" | "unavailable";
+  reason: string;
+  attribution: QuranAttribution;
+}
+
+export type QuranSurahResult = QuranSurahReady | QuranSurahNotReady;
+
 // ─────────────────────────────────────────────────────────────────
 // HELPER: apiFetch
 // A thin wrapper around the native fetch() that:
@@ -147,6 +218,19 @@ export async function createVocabularyWord(input: {
       // that the server can read
       body: JSON.stringify(input),
     },
+  );
+  return response.data;
+}
+
+/**
+ * GET /api/quran/surahs/1
+ * Fetches source-provided Al-Fatihah content. A successful request may still
+ * report an unavailable provider; callers must inspect the result status.
+ */
+export async function fetchAlFatihah(signal?: AbortSignal): Promise<QuranSurahResult> {
+  const response = await apiFetch<ApiResponse<QuranSurahResult>>(
+    "/api/quran/surahs/1",
+    { signal, cache: "no-store" },
   );
   return response.data;
 }
