@@ -10,6 +10,7 @@ export const errorHandler: ErrorRequestHandler = (
   res,
   _next,
 ) => {
+  void _next;
   console.error(error);
 
   if (error instanceof AppError) {

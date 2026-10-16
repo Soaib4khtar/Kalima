@@ -1,30 +1,37 @@
-// React Router v7 — the modern way to do client-side routing
-// "Route" defines a single URL pattern → component mapping
-// "Routes" is a container that looks at the current URL and renders
-//          the first <Route> that matches it
-import { Route, Routes } from "react-router";
-
-// We import our page components. Notice the path — pages live inside
-// their "feature" folder. This is called "feature-based folder structure":
-// instead of /pages/LearningPage.tsx (grouped by type),
-// we use /features/learning/pages/LearningPage.tsx (grouped by feature).
-// This scales much better as the app grows.
+﻿import { useEffect, useState } from "react";
+import { BookOpen, Moon, Plus, Sparkles, Sun } from "lucide-react";
+import { Link, NavLink, Route, Routes } from "react-router";
 import { LearningPage } from "./features/learning/pages/LearningPage";
 import { VocabularyPage } from "./features/vocabulary/pages/VocabularyPage";
+import { AddVocabularyPage } from "./features/vocabulary/pages/AddVocabularyPage";
+import "./App.css";
 
-// App is the root component — it defines the routing structure of the app.
-// Every URL the user can visit is declared here.
 export default function App() {
+  const [dark, setDark] = useState(() => {
+    try { return localStorage.getItem("kalima-theme") !== "light"; } catch { return true; }
+  });
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", dark);
+    try { localStorage.setItem("kalima-theme", dark ? "dark" : "light"); } catch { /* Storage is optional. */ }
+  }, [dark]);
   return (
-    // <Routes> looks at window.location.pathname and finds the matching <Route>
-    <Routes>
-      {/* "/" = the home/root URL (e.g. http://localhost:5173/)
-          This is the main learning/flashcard experience */}
-      <Route path="/" element={<LearningPage />} />
-
-      {/* "/vocabulary" = the word library page (e.g. http://localhost:5173/vocabulary)
-          This shows the full searchable list of words */}
-      <Route path="/vocabulary" element={<VocabularyPage />} />
-    </Routes>
+    <div className="app-shell">
+      <a className="skip-link" href="#main-content">Skip to content</a>
+      <header className="site-header"><div className="nav-inner">
+        <Link className="brand" to="/" aria-label="Kalima home"><span className="brand-symbol" lang="ar" aria-hidden="true">ك</span><span>kalima<span className="brand-dot">.</span></span></Link>
+        <nav className="main-nav" aria-label="Main navigation">
+          <NavLink to="/" end><Sparkles size={16} />Practice</NavLink>
+          <NavLink to="/vocabulary" end><BookOpen size={16} />Word library</NavLink>
+        </nav>
+        <div className="nav-actions"><button className="icon-button" onClick={() => setDark(!dark)} aria-label={`Switch to ${dark ? "light" : "dark"} mode`} title={`Switch to ${dark ? "light" : "dark"} mode`}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button><Link className="primary-button add-word-link" to="/vocabulary/new"><Plus size={17} /><span>Add word</span></Link></div>
+      </div></header>
+      <main id="main-content" className="page-container" tabIndex={-1}><Routes>
+        <Route path="/" element={<LearningPage />} />
+        <Route path="/vocabulary" element={<VocabularyPage />} />
+        <Route path="/vocabulary/new" element={<AddVocabularyPage />} />
+        <Route path="*" element={<div className="empty-panel"><h1>Page not found</h1><Link className="primary-button" to="/">Back to practice</Link></div>} />
+      </Routes></main>
+      <footer className="site-footer"><span>Little words. A world of possibility.</span><span>Made for your Arabic journey ✦</span></footer>
+    </div>
   );
 }

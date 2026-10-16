@@ -8,8 +8,21 @@ import vocabularyRouter from "./routes/vocabulary.routes.js";
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
+const allowedOrigins = new Set(
+  (process.env.CORS_ORIGINS ?? "http://localhost:5173,http://127.0.0.1:5173")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+);
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      callback(null, origin === undefined || allowedOrigins.has(origin));
+    },
+  }),
+);
+app.use(express.json({ limit: "100kb" }));
 
 app.use("/api/health", healthRouter);
 app.use("/api/vocabulary", vocabularyRouter);

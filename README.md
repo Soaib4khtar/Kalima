@@ -1,75 +1,21 @@
-# React + TypeScript + Vite
+﻿# Kalima
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An Arabic vocabulary app built with React, TypeScript, Vite, TanStack Query, and an Express/PostgreSQL API.
 
-Currently, two official plugins are available:
+Run the frontend with `npm install` and `npm run dev`. In a separate terminal, run `npm install` and `npm run dev` from `server/`. The API defaults to `http://localhost:5000`; set `VITE_API_URL` in a root `.env.local` to use another backend. The server requires its existing database configuration.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Practice at `/`, browse and filter your collection at `/vocabulary`, and add words at `/vocabulary/new`. The form uses the existing `POST /api/vocabulary` endpoint and supports English, Arabic, transliteration, category, and levels A1/A2/B1.
 
-## React Compiler
+Reveal a card with Space, then choose Again (1), Difficult (2), or Know (3). Again repeats after up to two other cards; Difficult repeats after up to five. Know removes the word from the current session. With fewer cards remaining, repeats return sooner. A session finishes only when all words are marked Know.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Review progress is stored in sessionStorage for the current browser tab and survives navigation and reloads. New vocabulary joins the next session; use Restart to include it immediately. Reviews use spacing within a session, without scheduling future days or syncing progress to the backend. The dark/light theme preference is stored in localStorage, and reduced-motion preferences disable animations.
 
-## Expanding the ESLint configuration
+Run `npm test` for review queue and persistence tests, and `npm run build` for TypeScript checks and the production bundle.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Quranic corpus foundation
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+The architecture audit, verified data-source options, schema direction, MVP, roadmap, and completed safety work are documented in [docs/PRODUCT_FOUNDATION.md](docs/PRODUCT_FOUNDATION.md).
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+The historical default migration chain is unsafe. Running `npm run db:migrate` from `server/` now refuses because the tracked legacy chain contains a destructive `DROP TABLE ... CASCADE`. Do not bypass that guard or activate the frozen v2 baseline without following its documented isolated-test and approval process.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
-
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
+From `server/`, run `npm test` for corpus integrity checks and `npm run corpus:validate -- <corpus-package.json>` for a read-only package preflight. Validation does not connect to the database; a structurally valid package is still blocked unless every Quranic source exactly matches an operator-approved source catalog.

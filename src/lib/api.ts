@@ -56,14 +56,15 @@ export interface VocabularyQueryParams {
 //       on network failure. This is a common gotcha.)
 // ─────────────────────────────────────────────────────────────────
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+  const headers = new Headers(options?.headers);
+  headers.set("Accept", "application/json");
+  if (options?.body !== undefined && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
   const response = await fetch(`${BASE_URL}${path}`, {
-    // Set Content-Type header for all requests so the server knows
-    // we're sending JSON (important for POST/PATCH requests)
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers, // spread any extra headers the caller passes
-    },
-    ...options, // spread other fetch options (method, body, etc.)
+    ...options,
+    headers,
   });
 
   // If the server returned a non-2xx status (400, 404, 500, etc.)
