@@ -11,7 +11,13 @@ export const errorHandler: ErrorRequestHandler = (
   _next,
 ) => {
   void _next;
-  console.error(error);
+  if (error?.type === "entity.parse.failed" || error?.type === "entity.too.large") {
+    res.status(error.type === "entity.too.large" ? 413 : 400).json({ success: false,
+      error: { code: "INVALID_BODY", message: "Request body must be valid JSON within the size limit" } });
+    return;
+  }
+  // Never log bearer tokens, request bodies, database URLs or raw provider errors.
+  if (!(error instanceof AppError)) console.error("Unhandled API error");
 
   if (error instanceof AppError) {
     res.status(error.statusCode).json({

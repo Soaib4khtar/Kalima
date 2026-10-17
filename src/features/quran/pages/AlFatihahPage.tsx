@@ -1,5 +1,9 @@
 import { useMemo, useReducer, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router";
+import { useAuth } from "../../auth/auth-context";
+import { BookmarkButton } from "../../learning/BookmarkButton";
+import { PersistentRecall } from "../../learning/PersistentRecall";
 import {
   ArrowRight,
   BookOpen,
@@ -108,6 +112,7 @@ function WordDetails({
         ? <audio key={audioUrl} aria-label={`Word ${word.position} audio`} controls preload="none" src={audioUrl}>Your browser does not support audio playback.</audio>
         : <p>No verified recording is available for this word.</p>}
     </div>
+    <BookmarkButton key={`${word.reference.verseKey}:${word.position}`} coordinate={word.reference} />
   </aside>;
 }
 
@@ -227,7 +232,10 @@ function NotReadyState({
 }
 
 function ReadySurah({ surah, attribution }: { surah: QuranSurah; attribution: QuranAttribution }) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { session, loading } = useAuth();
+  const [params] = useSearchParams();
+  const [selection, setSelectedId] = useState<string | null>(null);
+  const selectedId = selection ?? params.get("word");
   const selectedOccurrence = findOccurrence(surah, selectedId);
   const recallCards = useMemo(() => createQuranRecallCards(surah), [surah]);
   const wordCount = surah.verses.reduce((total, verse) => total + verse.words.length, 0);
@@ -276,7 +284,7 @@ function ReadySurah({ surah, attribution }: { surah: QuranSurah; attribution: Qu
     </div>
 
     {recallCards.length > 0
-      ? <RecallChallenge key={recallCards.map((card) => card.id).join("|")} cards={recallCards} />
+      ? loading ? <p role="status">Checking saved learning…</p> : session ? <PersistentRecall key={session.user.id} cards={recallCards} /> : <RecallChallenge key={recallCards.map((card) => card.id).join("|")} cards={recallCards} />
       : <section className="quran-practice-locked surface-panel">
           <Lightbulb size={20} aria-hidden="true" />
           <div><strong>Recall practice is waiting for verified meanings.</strong><p>The challenge will appear when the connected source provides contextual word translations.</p></div>

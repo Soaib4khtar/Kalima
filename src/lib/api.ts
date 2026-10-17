@@ -126,7 +126,7 @@ export type QuranSurahResult = QuranSurahReady | QuranSurahNotReady;
 //      (native fetch() does NOT throw on 4xx/5xx — it only throws
 //       on network failure. This is a common gotcha.)
 // ─────────────────────────────────────────────────────────────────
-async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const headers = new Headers(options?.headers);
   headers.set("Accept", "application/json");
   if (options?.body !== undefined && !headers.has("Content-Type")) {

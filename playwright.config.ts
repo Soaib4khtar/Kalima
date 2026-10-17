@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
+  testMatch: "al-fatihah.spec.ts",
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
@@ -39,7 +40,7 @@ export default defineConfig({
       command: "npm run dev -- --host 127.0.0.1 --port 4173 --strictPort",
       url: "http://127.0.0.1:4173/quran/al-fatihah",
       reuseExistingServer: false,
-      env: { VITE_API_URL: "http://127.0.0.1:4174" },
+      env: { VITE_API_URL: "http://127.0.0.1:4174", VITE_SUPABASE_URL: "", VITE_SUPABASE_PUBLISHABLE_KEY: "" },
     },
   ],
 });

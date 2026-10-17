@@ -76,6 +76,7 @@ test("preserves RTL text, selects words and completes a meaning recall", async (
   await expect(ayah).toHaveAttribute("dir", "rtl");
   await expect(ayah).toHaveAttribute("lang", "ar");
   await expect(page.locator(".quran-ready-content")).toHaveAttribute("translate", "no");
+  await expect(page.locator('meta[name="google"]')).toHaveAttribute("content", "notranslate");
   await expect(page.getByText("Translation author: Synthetic test author")).toBeVisible();
   await expect(page.getByText("Recitation style: Synthetic style")).toBeVisible();
   await expect(page.getByLabel("Ayah 1 audio")).toHaveAttribute("src", "https://audio.example.test/synthetic-ayah.mp3");

@@ -1,5 +1,9 @@
 import cors from "cors";
 import express from "express";
+import { createAuthFromEnv, type AuthVerifier } from "./modules/auth/auth.js";
+import { createLearningPoolFromEnv } from "./modules/learning/learning.db.js";
+import { LearningRepository } from "./modules/learning/learning.repository.js";
+import { createLearningRouter } from "./modules/learning/learning.routes.js";
 
 import { errorHandler } from "./middlewares/error.middleware.js";
 
@@ -12,6 +16,8 @@ import vocabularyRouter from "./routes/vocabulary.routes.js";
 
 export interface AppDependencies {
   quranProvider?: QuranContentProvider;
+  auth?: AuthVerifier;
+  learningRepository?: LearningRepository;
 }
 
 export function createApp(dependencies: AppDependencies = {}) {
@@ -38,6 +44,9 @@ export function createApp(dependencies: AppDependencies = {}) {
   app.use("/api/health", healthRouter);
   app.use("/api/vocabulary", vocabularyRouter);
   app.use("/api/quran", createQuranRouter(quranProvider));
+  const learningPool = dependencies.learningRepository ? undefined : createLearningPoolFromEnv();
+  app.use("/api/learning", createLearningRouter(dependencies.auth ?? createAuthFromEnv(),
+    dependencies.learningRepository ?? (learningPool ? new LearningRepository(learningPool) : undefined), quranProvider));
 
   app.use((_req, res) => {
     res.status(404).json({

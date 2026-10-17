@@ -15,6 +15,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import './index.css'
 import App from './App.tsx'
+import { AuthProvider } from './features/auth/AuthProvider'
 
 // Create ONE QueryClient for the entire app.
 // defaultOptions lets you set behavior for all queries globally:
@@ -37,9 +38,9 @@ createRoot(document.getElementById('root')!).render(
     {/* QueryClientProvider must wrap BrowserRouter (and everything else)
         so that ALL components in the app can use useQuery() */}
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <AuthProvider><BrowserRouter>
         <App />
-      </BrowserRouter>
+      </BrowserRouter></AuthProvider>
     </QueryClientProvider>
   </StrictMode>,
 )

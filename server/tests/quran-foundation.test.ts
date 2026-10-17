@@ -427,6 +427,125 @@ describe("Quran Foundation provider contract", () => {
     assert.equal(result.surah.verses[0]?.words[0]?.audioUrl, undefined);
   });
 
+  test("empty or null optional audio and meanings never hide Arabic or invent CDN URLs", async (context) => {
+    for (const audioUrl of ["", "   ", null, undefined]) {
+      await context.test(`audio URL ${JSON.stringify(audioUrl)}`, async () => {
+        const partialContent = {
+          ...syntheticVerses,
+          verses: syntheticVerses.verses.map((verse) => ({
+            ...verse,
+            audio: { verse_key: verse.verse_key, url: audioUrl },
+            words: verse.words.map((word) => ({
+              ...word,
+              translation: null,
+              transliteration: null,
+              audio_url: audioUrl,
+            })),
+          })),
+        };
+        const mockFetch = (async (input: RequestInfo | URL) => {
+          const url = String(input);
+          if (url.endsWith("/oauth2/token")) return jsonResponse({ access_token: "token", expires_in: 3600 });
+          if (url.includes("/chapters/1")) return jsonResponse(syntheticChapter);
+          if (url.includes("/resources/translations")) return jsonResponse(syntheticTranslations);
+          if (url.includes("/resources/recitations")) return jsonResponse(syntheticRecitations);
+          if (url.includes("/verses/by_chapter/1")) return jsonResponse(partialContent);
+          return jsonResponse({}, 404);
+        }) as typeof fetch;
+        const result = await configuredProvider(mockFetch).getSurah(1);
+        assert.equal(result.status, "ready");
+        if (result.status !== "ready") return;
+        result.surah.verses.forEach((verse, index) => {
+          assert.equal(verse.textUthmani, syntheticVerses.verses[index]?.text_uthmani);
+          assert.equal(verse.audio, undefined);
+          assert.ok(verse.words.every((word) => word.translation === undefined && word.audioUrl === undefined));
+        });
+      });
+    }
+  });
+
+  test("nested ayah audio inherits a verified parent when its key is absent, but conflicting keys are omitted", async (context) => {
+    for (const verseKey of [undefined, "1:99"]) {
+      await context.test(verseKey === undefined ? "prelive omits nested key" : "explicit key mismatch", async () => {
+        const content = {
+          ...syntheticVerses,
+          verses: syntheticVerses.verses.map((verse) => ({ ...verse, audio: { ...verse.audio, verse_key: verseKey } })),
+        };
+        const mockFetch = (async (input: RequestInfo | URL) => {
+          const url = String(input);
+          if (url.endsWith("/oauth2/token")) return jsonResponse({ access_token: "token", expires_in: 3600 });
+          if (url.includes("/chapters/1")) return jsonResponse(syntheticChapter);
+          if (url.includes("/resources/translations")) return jsonResponse(syntheticTranslations);
+          if (url.includes("/resources/recitations")) return jsonResponse(syntheticRecitations);
+          if (url.includes("/verses/by_chapter/1")) return jsonResponse(content);
+          return jsonResponse({}, 404);
+        }) as typeof fetch;
+        const result = await configuredProvider(mockFetch).getSurah(1);
+        assert.equal(result.status, "ready");
+        if (result.status !== "ready") return;
+        if (verseKey === undefined) {
+          assert.equal(result.surah.verses[0]?.audio?.url, "https://verses.quran.com/SyntheticReciter/mp3/001001.mp3");
+          assert.equal(result.surah.verses[1]?.audio?.url, syntheticVerses.verses[1]?.audio.url);
+        } else {
+          assert.ok(result.surah.verses.every((verse) => verse.audio === undefined));
+        }
+      });
+    }
+  });
+
+  test("prefers dedicated prelive recitation URLs and rejects unrelated or duplicate audio coordinates", async () => {
+    const content = {
+      ...syntheticVerses,
+      verses: syntheticVerses.verses.map((verse) => ({ ...verse, audio: verse.verse_number === 1 ? verse.audio : undefined })),
+    };
+    const mockFetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/oauth2/token")) return jsonResponse({ access_token: "token", expires_in: 3600 });
+      if (url.includes("/chapters/1")) return jsonResponse(syntheticChapter);
+      if (url.includes("/resources/translations")) return jsonResponse(syntheticTranslations);
+      if (url.includes("/resources/recitations")) return jsonResponse(syntheticRecitations);
+      if (url.includes("/verses/by_chapter/1")) return jsonResponse(content);
+      if (url.includes("/recitations/7001/by_chapter/1")) return jsonResponse({ audio_files: [
+        { verse_key: "1:1", url: "//recitation.example.test/synthetic-1.mp3" },
+        { verse_key: "1:2", url: "https://recitation.example.test/synthetic-2.mp3" },
+        { verse_key: "1:2", url: "https://recitation.example.test/synthetic-conflict.mp3" },
+        { verse_key: "2:1", url: "https://recitation.example.test/synthetic-unrelated.mp3" },
+      ] });
+      return jsonResponse({}, 404);
+    }) as typeof fetch;
+    const result = await configuredProvider(mockFetch).getSurah(1);
+    assert.equal(result.status, "ready");
+    if (result.status !== "ready") return;
+    assert.equal(result.surah.verses[0]?.audio?.url, "https://recitation.example.test/synthetic-1.mp3");
+    assert.equal(result.surah.verses[0]?.audio?.recitationId, 7001);
+    assert.equal(result.surah.verses[1]?.audio, undefined);
+  });
+
+  test("protocol-relative word and embedded ayah audio preserve the actual source hostname", async () => {
+    const content = {
+      ...syntheticVerses,
+      verses: syntheticVerses.verses.map((verse) => ({
+        ...verse,
+        audio: { verse_key: verse.verse_key, url: "//recitation.example.test/synthetic.mp3" },
+        words: verse.words.map((word) => ({ ...word, audio_url: "//word-audio.example.test/synthetic.mp3" })),
+      })),
+    };
+    const mockFetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/oauth2/token")) return jsonResponse({ access_token: "token", expires_in: 3600 });
+      if (url.includes("/chapters/1")) return jsonResponse(syntheticChapter);
+      if (url.includes("/resources/translations")) return jsonResponse(syntheticTranslations);
+      if (url.includes("/resources/recitations")) return jsonResponse(syntheticRecitations);
+      if (url.includes("/verses/by_chapter/1")) return jsonResponse(content);
+      return jsonResponse({}, 404);
+    }) as typeof fetch;
+    const result = await configuredProvider(mockFetch).getSurah(1);
+    assert.equal(result.status, "ready");
+    if (result.status !== "ready") return;
+    assert.equal(result.surah.verses[0]?.audio?.url, "https://recitation.example.test/synthetic.mp3");
+    assert.equal(result.surah.verses[0]?.words[0]?.audioUrl, "https://word-audio.example.test/synthetic.mp3");
+  });
+
   test("does not use a translation ID missing from the same-environment catalog", async () => {
     let versesRequested = false;
     const mockFetch = (async (input: RequestInfo | URL) => {

@@ -6,8 +6,11 @@ import { VocabularyPage } from "./features/vocabulary/pages/VocabularyPage";
 import { AddVocabularyPage } from "./features/vocabulary/pages/AddVocabularyPage";
 import { AlFatihahPage } from "./features/quran/pages/AlFatihahPage";
 import "./App.css";
+import { AccountPage } from "./features/auth/AccountPage";
+import { useAuth } from "./features/auth/auth-context";
 
 export default function App() {
+  const { session } = useAuth();
   const [dark, setDark] = useState(() => {
     try { return localStorage.getItem("kalima-theme") !== "light"; } catch { return true; }
   });
@@ -25,11 +28,12 @@ export default function App() {
           <NavLink to="/quran/al-fatihah"><BookOpen size={16} />Quran</NavLink>
           <NavLink to="/vocabulary" end><Library size={16} />Words</NavLink>
         </nav>
-        <div className="nav-actions"><button className="icon-button" onClick={() => setDark(!dark)} aria-label={`Switch to ${dark ? "light" : "dark"} mode`} title={`Switch to ${dark ? "light" : "dark"} mode`}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button></div>
+        <div className="nav-actions"><NavLink className="account-link" to="/account">{session ? "Account" : "Sign in"}</NavLink><button className="icon-button" onClick={() => setDark(!dark)} aria-label={`Switch to ${dark ? "light" : "dark"} mode`} title={`Switch to ${dark ? "light" : "dark"} mode`}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button></div>
       </div></header>
       <main id="main-content" className="page-container" tabIndex={-1}><Routes>
         <Route path="/" element={<LearningPage />} />
         <Route path="/quran/al-fatihah" element={<AlFatihahPage />} />
+        <Route path="/account" element={<AccountPage />} />
         <Route path="/vocabulary" element={<VocabularyPage />} />
         <Route path="/vocabulary/new" element={<AddVocabularyPage />} />
         <Route path="*" element={<div className="empty-panel"><h1>Page not found</h1><Link className="primary-button" to="/">Back to practice</Link></div>} />

@@ -116,8 +116,8 @@ const qfVerseSchema = z.object({
   translations: z.array(qfTranslationSchema).optional(),
   audio: z
     .object({
-      verse_key: z.string(),
-      url: z.string().min(1),
+      verse_key: z.string().optional().nullable(),
+      url: z.string().optional().nullable(),
     })
     .optional()
     .nullable(),
@@ -141,6 +141,13 @@ const qfRecitationsResponseSchema = z.object({
       style: z.string().optional().nullable(),
     }),
   ),
+});
+
+const qfVerseRecitationResponseSchema = z.object({
+  audio_files: z.array(z.object({
+    verse_key: z.string(),
+    url: z.string().optional().nullable(),
+  })),
 });
 
 const qfTranslationsResponseSchema = z.object({
@@ -212,8 +219,11 @@ function hasArabicScript(value: string): boolean {
 }
 
 function asHttpsUrl(value: string, baseUrl?: string): string | undefined {
+  if (!value.trim()) return undefined;
   try {
-    const url = baseUrl === undefined ? new URL(value) : new URL(value.replace(/^\/+/, ""), baseUrl);
+    // Keep network-path references (//host/path) intact. Stripping their leading
+    // slashes turns the source hostname into a path on the fallback CDN.
+    const url = baseUrl === undefined ? new URL(value) : new URL(value, baseUrl);
     return url.protocol === "https:" ? url.toString() : undefined;
   } catch {
     return undefined;
@@ -381,6 +391,12 @@ export class QuranFoundationProvider implements QuranContentProvider {
       throw new QuranFoundationRequestError("invalid-response");
     }
 
+    // The dedicated prelive recitation resource can publish working recordings
+    // while the verses endpoint still embeds stale URLs. Prefer the returned,
+    // verse-keyed recording from the same selected recitation resource.
+    const recitationAudio = recitation
+      ? await this.loadRecitationAudio(config, recitation.id, surahNumber, new Set(upstreamVerses.map((verse) => verse.verse_key)))
+      : new Map<string, string>();
     let wordTranslationLanguage: string | undefined;
     const verses = upstreamVerses.map((verse) => {
       const upstreamTranslation = verse.translations?.find(
@@ -453,10 +469,15 @@ export class QuranFoundationProvider implements QuranContentProvider {
       }
 
       const recitationId = recitation?.id;
-      const verseAudioUrl =
-        recitationId !== undefined && verse.audio?.verse_key === verse.verse_key
+      // Prelive embeds { url, segments } in the validated parent verse without
+      // repeating verse_key. Accept that association, but never an explicit
+      // conflicting key. The recitation itself was checked against its catalog.
+      const embeddedAudioUrl =
+        recitationId !== undefined && verse.audio?.url &&
+        (verse.audio.verse_key == null || verse.audio.verse_key === verse.verse_key)
           ? asHttpsUrl(verse.audio.url, VERSE_AUDIO_BASE_URL)
           : undefined;
+      const verseAudioUrl = recitationAudio.get(verse.verse_key) ?? embeddedAudioUrl;
 
       return {
         sourceId: verse.id,
@@ -550,6 +571,37 @@ export class QuranFoundationProvider implements QuranContentProvider {
       // Audio is optional. A failed catalog lookup must not substitute an
       // unverified resource or block otherwise verified text content.
       return undefined;
+    }
+  }
+
+  private async loadRecitationAudio(
+    config: ConfiguredOptions,
+    recitationId: number,
+    surahNumber: number,
+    expectedVerseKeys: Set<string>,
+  ): Promise<Map<string, string>> {
+    try {
+      const input = await this.fetchContent(
+        `recitations/${recitationId}/by_chapter/${surahNumber}?page=1&per_page=50`,
+        config,
+      );
+      const parsed = qfVerseRecitationResponseSchema.safeParse(input);
+      if (!parsed.success) return new Map();
+      const audio = new Map<string, string>();
+      const duplicates = new Set<string>();
+      for (const row of parsed.data.audio_files) {
+        if (!expectedVerseKeys.has(row.verse_key) || !row.url) continue;
+        const url = asHttpsUrl(row.url, VERSE_AUDIO_BASE_URL);
+        if (!url) continue;
+        if (audio.has(row.verse_key)) duplicates.add(row.verse_key);
+        else audio.set(row.verse_key, url);
+      }
+      // Ambiguous coordinates must not associate a recording with an ayah.
+      for (const key of duplicates) audio.delete(key);
+      return audio;
+    } catch {
+      // Optional audio failures never hide otherwise valid Quranic text.
+      return new Map();
     }
   }
 
