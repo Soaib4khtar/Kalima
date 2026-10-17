@@ -10,14 +10,19 @@ const require = createRequire(new URL("../../server/package.json", import.meta.u
 const { createRemoteJWKSet } = await import(pathToFileURL(require.resolve("jose")).href);
 const database = await disposableDatabase();
 const identity = await testIdentityProvider(4175);
+let reviewClockOffset = 0;
 const app = createApp({
-  quranProvider: syntheticProvider, learningRepository: new LearningRepository(database.pool),
+  quranProvider: syntheticProvider, learningRepository: new LearningRepository(database.pool, () => new Date(Date.now() + reviewClockOffset)),
   auth: createJwtVerifier(identity.issuer, createRemoteJWKSet(new URL(`${identity.issuer}/.well-known/jwks.json`))),
 });
 // The cleanup path exists only in this hermetic test host, never in createApp.
 // Playwright's Windows process kill does not reliably deliver SIGTERM.
 const server = createServer(async (req, res) => {
-  if (req.method === "POST" && req.url === "/__test/cleanup") {
+  if (req.method === "POST" && req.url === "/__test/advance-time") {
+    // Test-only clock control; never registered in the real application.
+    reviewClockOffset += 65_000;
+    res.setHeader("Content-Type", "application/json"); res.end('{"advanced":true}');
+  } else if (req.method === "POST" && req.url === "/__test/cleanup") {
     await database.close();
     res.setHeader("Content-Type", "application/json"); res.end('{"cleaned":true}');
   } else app(req, res);

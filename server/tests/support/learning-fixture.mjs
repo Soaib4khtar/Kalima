@@ -6,7 +6,7 @@ import { Pool } from "pg";
 import { generateKeyPair, exportJWK, SignJWT } from "jose";
 import { checkedLearningUrl, migrateLearning } from "../../scripts/learning-migrate.mjs";
 
-export async function disposableDatabase() {
+export async function disposableDatabase({ throughVersion = 2 } = {}) {
   const settings = JSON.parse(await readFile(new URL("../../../.local/learning-postgres/connection.json", import.meta.url), "utf8"));
   if (settings.port !== 55439 || settings.user !== "kalima_learning_admin") throw new Error("Unexpected isolated test cluster");
   const name = `kalima_learning_test_${randomUUID().replaceAll("-", "")}`;
@@ -15,7 +15,7 @@ export async function disposableDatabase() {
   const admin = new Pool({ connectionString: base + "postgres", connectionTimeoutMillis: 3000 });
   await admin.query(`CREATE DATABASE "${name}"`);
   const connectionString = checkedLearningUrl(base + name);
-  await migrateLearning(connectionString);
+  await migrateLearning(connectionString, { throughVersion });
   const pool = new Pool({ connectionString, max: 8 });
   return { pool, connectionString, async close() {
     await pool.end();
@@ -73,6 +73,7 @@ export const syntheticResult = {
   surah: { number: 1, nameArabic: "اختبار", nameTransliterated: "SYNTHETIC TEST ONLY", translatedName: "Not Quranic content",
     verses: [{ sourceId: 9001, number: 1, verseKey: "1:1", textUthmani: "اختبار تجريبي فقط",
       words: [1, 2, 3].map((position) => ({ sourceId: 9100 + position, position, textUthmani: ["اختبار", "تجريبي", "فقط"][position - 1],
+        ...(position === 1 ? { audioUrl: "https://audio.example.test/synthetic-word.mp3" } : {}),
         ...(position < 3 ? { translation: `Synthetic meaning ${position}` } : {}),
         reference: { surah: 1, ayah: 1, word: position, verseKey: "1:1" } })) }],
   },

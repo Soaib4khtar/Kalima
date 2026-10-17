@@ -108,3 +108,86 @@ test("hosted SMTP and quota errors are actionable without echoing raw provider t
     await expect(page.getByRole("alert")).not.toContainText("PRIVATE_ERROR_SENTINEL");
   }
 });
+
+test("daily inbox learns a bookmark, retries safely, waits for FSRS, and resumes across contexts", async ({ page, browser, isMobile }, info) => {
+  await page.route("https://audio.example.test/**", (route) => route.abort());
+  const email = `daily-${info.project.name}@example.test`;
+  await page.goto("/reviews");
+  await expect(page.getByRole("link", { name: "Sign in for daily reviews", exact: true })).toBeVisible();
+  await signIn(page, email);
+  await page.goto("/quran/al-fatihah");
+  await page.getByRole("button", { name: /^Word 1 in ayah 1:/ }).click();
+  const panel = page.locator(isMobile ? ".quran-inline-word-panel" : ".quran-detail-column").getByRole("complementary");
+  await panel.getByRole("button", { name: "Bookmark word", exact: true }).click();
+  await panel.getByRole("link", { name: "Find this word in daily reviews" }).click();
+  const inbox = page.getByRole("region", { name: "Daily review inbox", exact: true });
+  await expect(inbox.locator(".learning-stats > div").filter({ hasText: "New saved words" }).locator("dd")).toHaveText("1");
+  await page.getByText("Review timezone: UTC", { exact: true }).click();
+  await page.getByLabel("Timezone", { exact: true }).selectOption("America/New_York");
+  await page.getByRole("button", { name: "Save timezone", exact: true }).click();
+  await expect(page.getByText("Review timezone: America/New_York", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Learn saved words", exact: true }).click();
+  const recall = page.getByRole("region", { name: "Daily recall session", exact: true });
+  await expect(recall.getByRole("button", { name: /^Good / })).toHaveCount(0);
+  await expect(recall.getByLabel("Review word audio")).toHaveAttribute("src", "https://audio.example.test/synthetic-word.mp3");
+  await recall.getByRole("button", { name: "Reveal meaning", exact: true }).click();
+  await expect(recall.getByText("Synthetic meaning 1", { exact: true })).toBeVisible();
+  const submissions: string[] = [];
+  await page.route("**/api/learning/attempts", async (route) => {
+    submissions.push(route.request().postDataJSON().clientAttemptId);
+    if (submissions.length === 1) { await route.fetch(); await route.abort("failed"); } else await route.continue();
+  });
+  await recall.getByRole("button", { name: /^Again / }).click();
+  await recall.getByRole("button", { name: "Retry saving", exact: true }).click();
+  await expect(recall.getByRole("heading", { name: "Up to date for now." })).toBeVisible();
+  expect(submissions).toHaveLength(2); expect(submissions[0]).toBe(submissions[1]);
+  await page.reload();
+  await expect(recall.getByRole("heading", { name: "Up to date for now." })).toBeVisible();
+  await expect(page.getByText("Review timezone: America/New_York", { exact: true })).toBeVisible();
+  await expect(recall.getByRole("button", { name: "Reveal meaning", exact: true })).toHaveCount(0);
+  await page.request.post("http://127.0.0.1:4174/__test/advance-time");
+  await page.getByRole("button", { name: "Refresh inbox", exact: true }).click();
+  await recall.getByRole("button", { name: "Reveal meaning", exact: true }).click();
+  await recall.getByRole("button", { name: /^Easy / }).click();
+  await expect(page.getByText("Daily session saved. Your next reviews are scheduled.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Nothing due right now." })).toBeVisible();
+  await expect(inbox.locator(".learning-stats > div").filter({ hasText: "Words reviewed today" }).locator("dd")).toHaveText("1");
+  await expect(inbox.getByText("2 review events saved today.", { exact: false })).toBeVisible();
+  const context = await browser.newContext({ baseURL: "http://127.0.0.1:4173" });
+  const device = await context.newPage();
+  await signIn(device, email); await device.goto("/reviews");
+  await expect(device.getByText("Review timezone: America/New_York", { exact: true })).toBeVisible();
+  await expect(device.getByRole("heading", { name: "Nothing due right now." })).toBeVisible();
+  await expect(device.getByRole("region", { name: "Daily review inbox", exact: true }).getByText("2 review events saved today.", { exact: false })).toBeVisible();
+  await context.close();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("daily review source gaps and inbox errors preserve schedules without fabricated meanings", async ({ page, isMobile }, info) => {
+  await signIn(page, `daily-gaps-${info.project.name}@example.test`);
+  await page.goto("/quran/al-fatihah");
+  const panel = page.locator(isMobile ? ".quran-inline-word-panel" : ".quran-detail-column").getByRole("complementary");
+  for (const word of [2, 3]) {
+    await page.getByRole("button", { name: new RegExp(`^Word ${word} in ayah 1:`) }).click();
+    await panel.getByRole("button", { name: "Bookmark word", exact: true }).click();
+    await expect(panel.getByRole("button", { name: "Remove bookmark", exact: true })).toBeVisible();
+  }
+  await page.goto("/reviews");
+  await page.getByRole("button", { name: "Learn saved words", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "1 word(s) remain due because source meanings are unavailable." })).toBeVisible();
+  const recall = page.getByRole("region", { name: "Daily recall session", exact: true });
+  await recall.getByRole("button", { name: "Reveal meaning", exact: true }).click();
+  await expect(recall.getByText("Synthetic meaning 2", { exact: true })).toBeVisible();
+  await expect(recall.getByText("No verified word audio is available.", { exact: true })).toBeVisible();
+  await recall.getByRole("button", { name: /^Easy / }).click();
+  await expect(page.getByRole("heading", { name: "Nothing due right now." })).toBeVisible();
+  await page.route("**/api/learning/reviews/inbox", (route) => route.fulfill({ status: 503, json: { success: false, error: { message: "Synthetic inbox outage" } } }));
+  await page.getByRole("button", { name: "Refresh inbox", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("Synthetic inbox outage");
+  await page.unroute("**/api/learning/reviews/inbox");
+  await page.getByRole("button", { name: "Retry inbox", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Daily review inbox", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Learn saved words", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "1 word(s) remain due because source meanings are unavailable." })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Daily recall session", exact: true })).toHaveCount(0);
+});

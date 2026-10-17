@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from "react";
-import { BookOpen, Library, Moon, Sparkles, Sun } from "lucide-react";
+import { BookOpen, CalendarCheck, Library, Moon, Sparkles, Sun } from "lucide-react";
 import { Link, NavLink, Route, Routes } from "react-router";
 import { LearningPage } from "./features/learning/pages/LearningPage";
 import { VocabularyPage } from "./features/vocabulary/pages/VocabularyPage";
@@ -8,6 +8,7 @@ import { AlFatihahPage } from "./features/quran/pages/AlFatihahPage";
 import "./App.css";
 import { AccountPage } from "./features/auth/AccountPage";
 import { useAuth } from "./features/auth/auth-context";
+import { DailyReviewsPage } from "./features/learning/pages/DailyReviewsPage";
 
 export default function App() {
   const { session } = useAuth();
@@ -25,6 +26,7 @@ export default function App() {
         <Link className="brand" to="/" aria-label="Kalima home"><span className="brand-symbol" lang="ar" aria-hidden="true">ك</span><span>kalima<span className="brand-dot">.</span></span></Link>
         <nav className="main-nav" aria-label="Main navigation">
           <NavLink to="/" end><Sparkles size={16} />Practice</NavLink>
+          <NavLink to="/reviews"><CalendarCheck size={16} />Reviews</NavLink>
           <NavLink to="/quran/al-fatihah"><BookOpen size={16} />Quran</NavLink>
           <NavLink to="/vocabulary" end><Library size={16} />Words</NavLink>
         </nav>
@@ -34,6 +36,7 @@ export default function App() {
         <Route path="/" element={<LearningPage />} />
         <Route path="/quran/al-fatihah" element={<AlFatihahPage />} />
         <Route path="/account" element={<AccountPage />} />
+        <Route path="/reviews" element={<DailyReviewsPage />} />
         <Route path="/vocabulary" element={<VocabularyPage />} />
         <Route path="/vocabulary/new" element={<AddVocabularyPage />} />
         <Route path="*" element={<div className="empty-panel"><h1>Page not found</h1><Link className="primary-button" to="/">Back to practice</Link></div>} />

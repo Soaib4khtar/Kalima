@@ -5,7 +5,6 @@ import { createApp } from "../src/app.js";
 import { createJwtVerifier, createAuthFromEnv } from "../src/modules/auth/auth.js";
 import { LearningRepository } from "../src/modules/learning/learning.repository.js";
 import { createLearningPoolFromEnv, validateLearningDatabaseUrl } from "../src/modules/learning/learning.db.js";
-import { nextInterval } from "../src/modules/learning/learning.schemas.js";
 import { disposableDatabase, testIdentityProvider, syntheticProvider, alice, bob } from "./support/learning-fixture.mjs";
 import { migrateLearning, checkedLearningUrl } from "../scripts/learning-migrate.mjs";
 
@@ -101,7 +100,7 @@ test("resumable recall persists, serializes concurrent duplicate attempts, rejec
   const pair = await Promise.all([request("/learning/attempts", "alice", "POST", input), request("/learning/attempts", "alice", "POST", input)]);
   assert.equal(pair[0].status, 200); assert.deepEqual(pair[0].json, pair[1].json);
   assert.equal(pair[0].json.data.reviewCount, 1);
-  assert.equal(Date.parse(pair[0].json.data.dueAt) - Date.parse(pair[0].json.data.reviewedAt), 86_400_000);
+  assert.equal(Date.parse(pair[0].json.data.dueAt) - Date.parse(pair[0].json.data.reviewedAt), 600_000);
   assert.equal((await request("/learning/attempts", "alice", "POST", { ...input, rating: "easy" })).status, 409);
   assert.equal((await request("/learning/attempts", "alice", "POST", { ...input, clientAttemptId: crypto.randomUUID() })).status, 409);
   const current = (await request("/learning/sessions/current")).json.data;
@@ -122,12 +121,6 @@ test("resumable recall persists, serializes concurrent duplicate attempts, rejec
   assert.equal(due.items.length, 1); assert.equal(due.items[0].vocabularyId, input.vocabularyId);
   const counts = await database.pool.query("SELECT count(*)::int AS n FROM learning.review_attempts");
   assert.equal(counts.rows[0].n, 2);
-});
-
-test("starter scheduling is explicit, bounded, and does not claim mastery", () => {
-  assert.equal(nextInterval("again", 86400), 600); assert.equal(nextInterval("hard", 0), 3600);
-  assert.equal(nextInterval("easy", 0), 259200); assert.equal(nextInterval("good", 86400), 172800);
-  assert.equal(nextInterval("easy", 31_536_000), 31_536_000);
 });
 
 test("failed attempt insertion rolls back progress/session and permits safe retry", async () => {

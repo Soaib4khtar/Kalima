@@ -16,9 +16,17 @@ Run `npm test` for review queue and persistence tests, and `npm run build` for T
 
 ## Accounts and persistent Quran learning
 
+Open **Reviews** at `/reviews` for the new FSRS-powered daily inbox: due/overdue and
+later-today vocabulary, new saved words, rating previews, relearning waits, saved
+IANA timezone, and resumable sessions with source-backed context/audio. Migration
+0002 is applied to the isolated development learning store with existing activity
+preserved. See [scheduler policy, APIs, safety, tests and limitations](docs/ADAPTIVE_REVIEWS.md).
+Real two-user isolation and a real-account daily-review walkthrough remain tracked
+acceptance requirements before gamification.
+
 `/account` supports Supabase email-code authentication. Signed-in Al-Fatihah readers can bookmark source-verified occurrences, save self-rated recall attempts, resume a session after refresh/on another device, and view progress/history. Quran reading and anonymous recall remain public. A separate PostgreSQL development cluster stores activity and references only, never Quran text, glosses, translations, recordings, or authentication tokens. The original database and historical migrations are not adopted.
 
-Start the isolated store with `npm --prefix server run learning:db`. Real email sign-in still requires a development Supabase project and the blank auth settings in the two `.env.example` files; it is honestly unavailable without them. See [setup, API/security boundaries, database safety, tests, and next steps](docs/PERSISTENT_LEARNING.md). `npm run test:learning:e2e` exercises the real SDK and isolated PostgreSQL with clearly marked synthetic signed identities/content; it is not proof of hosted email delivery.
+For new environments, prepare the isolated store with `npm --prefix server run learning:db` and configure a development Supabase project using the two `.env.example` files. Hosted development acceptance passed on **2026-10-17**: real email-code login, ES256 JWT verification, refresh/sign-out, bookmarks/recall persistence, and recovery after an independent sign-in in a separate browser context. Two-different-real-user isolation remains untested. See [setup, acceptance evidence, security boundaries, and next steps](docs/PERSISTENT_LEARNING.md). `npm run test:learning:e2e` separately uses clearly marked synthetic identities/content and is not itself proof of hosted email delivery.
 
 After following the setup guide, run `npm run auth:preflight` for redacted read-only configuration/discovery checks. Use `npm run auth:accept -- --confirm-development` for an opt-in visible-browser hosted sign-in check; type email codes privately in that browser. Add `--cross-device --two-users` only when email delivery quotas permit three real sign-ins. The command retains development learning activity, does not run migrations, and never treats synthetic tests or a successful preflight as proof of hosted login.
 

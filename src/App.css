@@ -251,6 +251,50 @@ kbd { font-family: inherit; font-size: 9px; line-height: 1; border: 1px solid cu
 .bookmark-action { display: block; margin-top: 20px; color: var(--primary); font-size: 13px; }
 .recall-ratings { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .recall-ratings button { min-height: 44px; }
+.review-overview, .review-word-inbox { padding: 30px; margin-bottom: 24px; }
+.review-overview-heading, .review-card-topline { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; }
+.review-overview-heading h2, .review-start h2, .review-word-inbox h2, .review-waiting h2 { font-family: Georgia, serif; font-size: 28px; font-weight: 400; line-height: 1.4; margin: 10px 0; }
+.review-overview-heading p:last-child { color: var(--muted-foreground); font-size: 13px; }
+.review-overdue { padding: 12px 16px; border-radius: 8px; background: var(--accent); color: var(--primary); font-size: 13px; }
+.review-timezone { margin: 22px 0; padding-top: 18px; border-top: 1px solid var(--border); font-size: 12px; }
+.review-timezone summary, .review-context summary { cursor: pointer; color: var(--primary); padding-block: 5px; }
+.review-timezone p { color: var(--muted-foreground); margin: 10px 0; line-height: 1.7; }
+.review-timezone form { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+.review-timezone select { min-height: 44px; min-width: 0; max-width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; color: var(--foreground); background: var(--input-bg); }
+.review-timezone label { flex: 0 0 auto; }
+.review-notice { padding: 15px 20px; margin-bottom: 24px; border: 1px solid var(--border); border-radius: 9px; color: var(--primary); background: var(--accent); font-size: 13px; }
+.daily-review-card, .review-start { max-width: 800px; padding: 32px; margin: 32px auto; text-align: center; }
+.review-card-topline { font-size: 12px; color: var(--muted-foreground); align-items: center; }
+.review-card-topline > span:first-child { display: flex; gap: 8px; align-items: center; color: var(--primary); }
+.daily-review-arabic { font-family: 'Traditional Arabic', 'Noto Naskh Arabic', serif; color: var(--primary); font-size: clamp(42px, 7vw, 66px); font-weight: 400; line-height: 1.7; margin: 20px 0 0; }
+.daily-review-card > audio, .review-context audio { display: block; width: min(100%, 340px); margin: 20px auto; height: 38px; color-scheme: light dark; }
+.daily-review-card > .muted-copy { margin-top: 24px; }
+.review-reveal { min-height: 48px; min-width: 220px; }
+.review-rating-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 16px 0 22px; }
+.review-rating { min-height: 104px; padding: 14px 8px; border: 1px solid var(--border); border-radius: 10px; color: var(--foreground); background: var(--input-bg); transition: border-color .15s ease, transform .15s ease; }
+.review-rating:not(:disabled):hover { border-color: var(--primary); transform: translateY(-2px); }
+.review-rating strong, .review-rating span, .review-rating small { display: block; }
+.review-rating strong { font-size: 14px; margin-bottom: 8px; }
+.review-rating span { font-size: 10px; color: var(--muted-foreground); min-height: 30px; }
+.review-rating small { color: var(--primary); font-size: 12px; padding-top: 10px; }
+.rating-good { background: var(--accent); }
+.review-context { text-align: left; padding: 14px 0; border-top: 1px solid var(--border); margin-top: 25px; }
+.review-context > p:not(.quran-ayah) { font-size: 14px; line-height: 1.8; margin: 18px 0; }
+.review-waiting { padding: 30px 0; }
+.review-waiting > svg, .review-start > svg { color: var(--primary); }
+.review-waiting p, .review-start p { margin: 12px 0; color: var(--muted-foreground); font-size: 13px; line-height: 1.8; }
+.review-start-actions { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: center; margin-top: 24px; }
+.review-source-state { padding: 24px; margin-block: 24px; line-height: 1.8; }
+.review-source-state p { color: var(--muted-foreground); }
+.review-attribution { margin: 28px 0; }
+.review-word-inbox > ul { list-style: none; padding: 0; margin-top: 24px; }
+.review-word-inbox li { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px 0; border-top: 1px solid var(--border); }
+.review-word-inbox li > a { display: flex; align-items: center; gap: 20px; min-width: 0; color: var(--muted-foreground); font-size: 12px; }
+.review-list-arabic { color: var(--foreground); font-family: 'Traditional Arabic', 'Noto Naskh Arabic', serif; font-size: 28px; line-height: 1.7; }
+.review-word-inbox li > div { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; color: var(--muted-foreground); font-size: 11px; text-align: right; }
+.review-state { display: inline-block; padding: 3px 8px; border-radius: 5px; background: var(--accent); color: var(--primary); text-transform: capitalize; }
+.review-overview > .muted-copy, .review-word-inbox > .muted-copy { font-size: 12px; line-height: 1.8; }
+@media (max-width: 580px) { .review-overview, .review-word-inbox, .daily-review-card, .review-start { padding: 22px 18px; } .review-rating-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .review-word-inbox li { align-items: flex-start; gap: 12px; } .review-word-inbox li > a { flex-direction: column; align-items: flex-start; gap: 4px; } .review-timezone form { align-items: stretch; flex-direction: column; } .review-card-topline { font-size: 10px; } .review-rating span { min-height: 0; } }
 .quran-recall h2:not([lang]) { font-family: Georgia, serif; font-size: 28px; }
 @media (max-width: 480px) { .learning-stats, .recall-ratings { grid-template-columns: repeat(2, 1fr); } .account-panel, .learning-summary { padding: 22px; } }
 @keyframes page-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }

@@ -2,6 +2,11 @@
 
 ## Status and scope
 
+The next milestone is implemented: [FSRS scheduling and the daily review inbox](ADAPTIVE_REVIEWS.md)
+at `/reviews`. That document describes the current scheduling policy, migration 2,
+timezone rules, validation and remaining pre-gamification acceptance work. The
+hosted-auth evidence below remains valid; synthetic review tests do not replace it.
+
 Al-Fatihah stays public. `/account` adds managed email-code sign-in/sign-out.
 Signed-in readers can bookmark word occurrences, self-rate contextual recall,
 resume an ordered session, and view account-specific counts and recent history.
@@ -14,8 +19,12 @@ for learner data; moving that data to Supabase is not required. No external
 project or paid service was provisioned. Check the [current plans](https://supabase.com/pricing)
 and email delivery limits before choosing a deployment plan.
 
-At the latest configuration check, all three Supabase settings were absent. Real
-email delivery and hosted sign-in have **not** been accepted. Offline browser tests use the
+Hosted development acceptance passed on **2026-10-17** with a real Supabase
+email-code login. JWT signature/issuer/audience/expiry/identity, hosted refresh,
+sign-out, bookmarks, recall history/progress, reload restoration, and recovery
+after an independent email sign-in in a second browser context were verified.
+Two-different-real-user isolation was not run; offline isolation coverage is not
+a substitute for that outstanding check. Offline browser tests use the
 real SDK, cryptographically signed test tokens, an ephemeral test JWKS endpoint,
 and real disposable PostgreSQL databases. This is test infrastructure, not an
 application authentication bypass. Production source contains no fake-user mode.
@@ -132,17 +141,62 @@ possible. Signed access tokens can remain valid until expiry, as documented belo
 No screenshots, traces, videos, browser storage-state files, email/code logs,
 JWT dumps or provider-content fixtures are saved. Reports contain outcomes only.
 Failure/timeout may leave legitimate development activity; it is retained for
-inspection, not removed automatically. Hosted acceptance has **not yet run**
-successfully in this workspace; the missing configuration remains the blocker.
+inspection, not removed automatically. The successful 2026-10-17 hosted run is
+recorded below; optional checks that were not performed remain explicitly marked.
 
 The focused authentication-readiness run passed **8 auth/preflight tests**, **2
 frontend error-message tests**, and **6 desktop/mobile learning browser tests**,
 plus backend/frontend TypeScript builds and lint. These cover both ES256 and
 RS256, forged/wrong-scope/expired/future-issued tokens, JWKS outages, safe error
 messages, and the existing synthetic persistence flow. They do not constitute
-hosted sign-in evidence. The hosted command was exercised only through its
-missing-configuration refusal. Completed QF live acceptance and historical
+hosted sign-in evidence. That earlier readiness run exercised only the command's
+missing-configuration refusal; genuine hosted acceptance followed on 2026-10-17.
+Completed QF live acceptance and historical
 migration tests were not repeated for this authentication-readiness work.
+
+### Hosted acceptance result — 2026-10-17
+
+`npm run auth:accept -- --confirm-development --cross-device` completed against
+the configured development project and isolated `kalima_learning_dev` store.
+
+- Real email-code login succeeded. The normal backend verifier accepted the
+  actual ES256 signature, configured issuer, authenticated audience, expiry,
+  and UUID identity. An invalid bearer token was rejected.
+- Bookmarking and a development recall attempt saved successfully; history and
+  review totals matched the committed attempt exactly once. A fresh independent
+  database connection confirmed one profile, bookmark, recall attempt and progress
+  record. These development records are retained, not deleted by acceptance.
+- Reload restored the same authenticated learner and unfinished recall position.
+  The real Supabase SDK refreshed the hosted session, and the backend verified
+  the refreshed token without changing the learner profile.
+- A separate browser context signed into the same account with a **new emailed
+  code**, recovering its bookmark, history and progress. No token or browser
+  storage-state copying was used. This tests independent browser-context recovery,
+  not a physical second-device/mobile login.
+- Both browser contexts signed out; local session state/private learning UI was
+  cleared. Public source-provided Al-Fatihah reading worked without authentication.
+- Two different real users were **not tested** in this run. The aggregate command
+  status was `passed-with-unperformed-checks` solely because that optional check
+  remained unperformed. Dashboard templates/redirects/SMTP were not audited with
+  administrative credentials; actual email-code delivery and verification worked.
+
+Integration fixes: the server's `SUPABASE_URL` mistakenly included `/rest/v1`;
+it was corrected to the same project base URL used by the frontend, without
+changing keys. If copying a URL from Data API settings, copy its **base project
+origin**, not the REST endpoint. A late initial-session lookup failure can no
+longer clear a newer successful sign-in: both AuthProvider completion branches
+now use the generation guard.
+
+Post-fix validation passed: **8/8** auth/preflight tests, **2/2** frontend auth-error
+tests, **6/6** desktop/mobile account-learning browser tests, frontend TypeScript,
+backend/frontend builds, and lint. The frontend build has a non-blocking bundle
+size warning with the configured Auth SDK included. QF corpus/audio acceptance
+and historical migration tests were not repeated.
+
+The isolated PostgreSQL cluster was started without running migrations. The
+original database was not queried or modified; no production resources were
+changed and nothing was deployed. No keys, tokens, email addresses/codes, provider
+responses, screenshots or browser storage files were added to documentation/Git.
 
 Only the **publishable** key belongs in `VITE_*`. Never paste service-role,
 secret, signing, Quran Foundation, email, access-token, or refresh-token values
@@ -161,8 +215,8 @@ ignored `server/.env.learning.local`; do not print or commit that file or the
 runtime directory. The API and migration runner load this file automatically if
 no nonempty explicit `LEARNING_DATABASE_URL` is supplied.
 
-`npm run learning:migrate` applies only `learning-migrations/0001_learning.sql`
-with a checksum, transaction, and advisory lock. Repeating it is a no-op;
+`npm run learning:migrate` applies the independent `learning-migrations` versions
+0001 and 0002 with checksums, a transaction, and an advisory lock. Repeating it is a no-op;
 checksum mismatches or untracked existing learning tables are refused. Do not
 edit an applied migration; add a reviewed new migration for subsequent changes.
 The runtime/migration gates reject the original `kalima` name, remote hosts,
@@ -194,12 +248,12 @@ version-pinned archive of past meanings. Future durable content still requires
 resource licensing, attribution, and synchronization under the
 [Developer Terms](https://api-docs.quran.foundation/legal/developer-terms/).
 
-`starter-v1` uses server timestamps: Again → 10 minutes; Hard → at least 1 hour
-(previous interval ×1.2); Good → at least 1 day (×2); Easy → at least 3 days (×3),
-capped at one year. Each word receives one self-rating per session. Starting all
-words allows optional extra practice; due-only practice excludes future-due words
-and introduces not-yet-reviewed words. An existing session resumes in preference
-to creating another queue. No score is advertised as mastery or FSRS.
+The historical `starter-v1` intervals are no longer the active scheduler. New
+ratings use FSRS-6; historical events and due instants remain unchanged until
+reviewed. Daily sessions can repeat learning/relearning cards at their actual due
+times; reading-practice sessions remain one pass. See [adaptive reviews](ADAPTIVE_REVIEWS.md)
+for exact parameters, memory bootstrap, timezone handling and API additions. No
+score is advertised as mastery or guaranteed retention.
 
 Attempts require a client-generated UUID. An identical retry returns the stored
 result; conflicting reuse, already-reviewed cards, and out-of-order cards return
@@ -217,12 +271,12 @@ and use `Cache-Control: no-store`. Identity comes only from a verified token.
 | Method/path | Purpose |
 | --- | --- |
 | GET `/status` (public) | Configuration presence, not a database/JWKS health guarantee |
-| GET/PATCH `/profile` | Own profile; PATCH accepts only nullable `displayName` |
+| GET/PATCH `/profile` | Own profile; PATCH accepts nullable `displayName` and/or IANA `timezone` |
 | GET/POST `/bookmarks` | Own bounded list / save source-verified `{surah,ayah,word}` |
 | DELETE `/bookmarks/:vocabularyId` | Remove own bookmark only |
 | GET `/sessions/current` | Resume own unfinished Al-Fatihah session |
 | POST `/sessions` | Start/resume; accepts `{dueOnly?: boolean}` |
-| POST `/attempts` | `{clientAttemptId,sessionId,vocabularyId,rating}` |
+| POST `/attempts` | `{clientAttemptId,sessionId,vocabularyId,rating,expectedRevision?}`; revision required for daily sessions |
 | GET `/history` | Own history, 50 per page with UUID cursor |
 | GET `/progress` | Own totals, due count and up to 100 progress items |
 
@@ -241,9 +295,10 @@ existing reading browser **10/10**, learning browser **4/4** (desktop/mobile),
 TypeScript/builds and lint pass. Genuine QF prelive public acceptance passed
 **554 checks**: seven ayahs, 29 word mappings/glosses, seven translations, source
 attribution, 29 reachable word recordings and seven reachable ayah recordings,
-with sample word/ayah playback. Hosted Supabase sign-in remains unconfigured.
-The retained development store has one applied migration, zero profiles, and zero
-attempts; synthetic tests used separate disposable databases.
+with sample word/ayah playback. At that initial stage Supabase sign-in was
+unconfigured and the development store had no learners or attempts. Hosted
+acceptance subsequently passed on 2026-10-17; see the result above for the retained
+real development activity. Synthetic tests use separate disposable databases.
 
 Start the isolated cluster first, then run:
 
@@ -271,9 +326,9 @@ afterward. Browser traces are disabled for account tests.
 configuration disabled and no provider content written to disk. A passing live
 reading check does not claim hosted Supabase email sign-in has succeeded.
 
-Next: finish real hosted-auth acceptance, then a due-review inbox and calibrated
-spaced repetition using the recorded rating/time history (including lapse/relearn
-behavior and scheduler-version migrations). Before any public deployment: approve
+Next: complete two-different-real-user isolation and real-account daily-review
+acceptance, then calibrate retention and reward rules before gamification. The
+due inbox and FSRS learning/relearning foundation are implemented. Before any public deployment: approve
 database adoption/hosting, least-privilege runtime credentials, backups, TLS/CSP,
 rate/abuse limits, email delivery, privacy/terms, and account data export/deletion.
 No production readiness or deployment is implied by this local milestone.

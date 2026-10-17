@@ -19,5 +19,6 @@ export function BookmarkButton({ coordinate }: { coordinate: Coordinate }) {
     <button className="reveal-button" aria-pressed={Boolean(saved)} disabled={query.isPending || query.isError || mutation.isPending} onClick={() => mutation.mutate()}>{mutation.isPending ? "Saving…" : saved ? "Remove bookmark" : "Bookmark word"}</button>
     {query.isError && <p role="alert">{query.error.message} <button onClick={() => void query.refetch()}>Retry bookmarks</button></p>}
     {mutation.isError && <p role="alert">{mutation.error.message}</p>}
+    {saved && <Link className="text-link" to="/reviews">Find this word in daily reviews</Link>}
   </div>;
 }

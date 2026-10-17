@@ -12,6 +12,7 @@ export function LearningSummary() {
   if (!user) return null;
   return <section className="surface-panel learning-summary" aria-label="Your learning progress">
     <h2>Your learning</h2>
+    <Link className="primary-button" to="/reviews">Open daily review inbox</Link>
     {progress.isPending ? <p role="status">Loading saved progress…</p> : progress.isError ? <p role="alert">{progress.error.message} <button className="reveal-button" onClick={() => void progress.refetch()}>Retry progress</button></p> : <dl className="learning-stats">
       <div><dt>Recall attempts</dt><dd>{progress.data.totalReviews}</dd></div>
       <div><dt>Words reviewed</dt><dd>{progress.data.reviewedWords}</dd></div>

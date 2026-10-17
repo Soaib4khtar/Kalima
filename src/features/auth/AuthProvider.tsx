@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const initial = generation;
     void authClient.auth.getSession().then(({ data, error }) => {
       if (generation === initial) accept(error ? null : data.session);
-    }).catch(() => accept(null));
+    }).catch(() => { if (generation === initial) accept(null); });
     return () => { disposed = true; data.subscription.unsubscribe(); };
   }, [cache]);
   return <AuthContext.Provider value={state}>{children}</AuthContext.Provider>;

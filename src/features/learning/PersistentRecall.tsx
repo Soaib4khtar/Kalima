@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../auth/auth-context";
 import type { QuranRecallCard } from "../quran/quran-learning";
@@ -31,7 +32,7 @@ export function PersistentRecall({ cards }: { cards: QuranRecallCard[] }) {
   const reviewed = query.data?.items.filter((entry) => entry.reviewed).length ?? 0;
   function rate(rating: Rating) {
     if (!query.data || !item || pending) return;
-    const input = { clientAttemptId: crypto.randomUUID(), sessionId: query.data.id, vocabularyId: item.vocabularyId, rating };
+    const input = { clientAttemptId: crypto.randomUUID(), sessionId: query.data.id, vocabularyId: item.vocabularyId, rating, expectedRevision: item.revision };
     setPending(input); save.mutate(input);
   }
   return <section className="quran-recall surface-panel" aria-label="Saved meaning recall">
@@ -55,6 +56,6 @@ export function PersistentRecall({ cards }: { cards: QuranRecallCard[] }) {
     {start.isError && <p role="alert">{start.error.message}</p>}
     {save.isPending && <p role="status">Saving recall…</p>}
     {save.isError && pending && <div role="alert"><p>{save.error.message} Your rating has not been confirmed.</p><button className="primary-button" onClick={() => save.mutate(pending)}>Retry saving</button><button className="reveal-button" onClick={async () => { const result = await query.refetch(); if (!result.isError) { setPending(null); setRevealed(null); save.reset(); } }}>Refresh saved session</button></div>}
-    <p className="muted-copy">Starter schedule: Again 10 minutes; Hard at least 1 hour; Good at least 1 day; Easy at least 3 days. Further recalls extend intervals. This is not a mastery assessment.</p>
+    <p className="muted-copy">FSRS adapts your next review to your recall. This reading practice is one pass; <Link className="text-link" to="/reviews">open daily reviews</Link> for scheduled learning and relearning. No mastery score is awarded.</p>
   </section>;
 }
