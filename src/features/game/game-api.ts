@@ -32,4 +32,17 @@ export function useGame() {
   }, [data, refetch, user]);
   return query;
 }
+export function useGardenPage(stage='',cursor='') {
+  const {session}=useAuth(),user=session?.user.id;
+  const query=useQuery({queryKey:['learning',user,'game','garden',stage,cursor],
+    queryFn:()=>gameApi<GardenPage>(`/garden?${new URLSearchParams({...(cursor?{cursor}:{}),...(stage?{stage}:{})})}`),enabled:Boolean(user),retry:false});
+  const {data,refetch}=query;
+  useEffect(()=>{
+    if(!data)return;
+    const next=data.items.map(p=>p.dueAt).filter(d=>Date.parse(d)>Date.parse(data.serverNow)).sort()[0];
+    const delay=nextWorldRefresh(data.serverNow,null,next??null); if(delay===null)return;
+    const timer=window.setTimeout(()=>void refetch(),delay);return()=>window.clearTimeout(timer);
+  },[data,refetch]);
+  return query;
+}
 export const plantStages = ['Seed', 'Sprout', 'Growing plant', 'Mature plant', 'Bloom'];

@@ -16,6 +16,11 @@ Run `npm test` for review queue and persistence tests, and `npm run build` for T
 
 ## Accounts and persistent Quran learning
 
+The frontend now features the **Living Atlas**: an explorable illustrated Kingdom,
+planted Memory Garden, journal-style quests, mobile world dock and accessible
+detail sheets. See [the frontend overhaul and before/after gallery](docs/FRONTEND_WORLD.md).
+No backend/economy/schema changes accompany this redesign.
+
 The **Growing Kingdom** MVP is implemented: personalized Today’s Quests, a five-stage
 Memory Garden, server-graded source-association checks, My Kingdom, XP/Build Tokens,
 weekly challenges and gentle learning momentum. See [features, APIs, economy,

@@ -5,17 +5,17 @@ import { Link, NavLink, Route, Routes } from "react-router";
 import { LearningPage } from "./features/learning/pages/LearningPage";
 import { VocabularyPage } from "./features/vocabulary/pages/VocabularyPage";
 import { AddVocabularyPage } from "./features/vocabulary/pages/AddVocabularyPage";
-import { AlFatihahPage } from "./features/quran/pages/AlFatihahPage";
 import "./App.css";
-import { AccountPage } from "./features/auth/AccountPage";
 import { useAuth } from "./features/auth/auth-context";
-import { DailyReviewsPage } from "./features/learning/pages/DailyReviewsPage";
 import { OAuthCallbackPage } from "./features/auth/OAuthCallbackPage";
 const HomePage = lazy(() => import('./features/game/HomePage'));
 const QuestsPage = lazy(() => import('./features/game/HomePage').then(m => ({ default: m.QuestsPage })));
 const GardenPage = lazy(() => import('./features/game/GardenPage'));
 const KingdomPage = lazy(() => import('./features/game/KingdomPage'));
 const ProgressPage = lazy(() => import('./features/game/ProgressPage'));
+const AlFatihahPage=lazy(()=>import('./features/quran/pages/AlFatihahPage').then(m=>({default:m.AlFatihahPage})));
+const AccountPage=lazy(()=>import('./features/auth/AccountPage').then(m=>({default:m.AccountPage})));
+const DailyReviewsPage=lazy(()=>import('./features/learning/pages/DailyReviewsPage').then(m=>({default:m.DailyReviewsPage})));
 
 export default function App() {
   const { session, loading } = useAuth();

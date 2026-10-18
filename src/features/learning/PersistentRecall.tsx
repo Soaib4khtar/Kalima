@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../auth/auth-context";
 import type { QuranRecallCard } from "../quran/quran-learning";
 import { learningApi, type AttemptSubmission, type PersistentSession, type Rating, type SavedAttempt } from "./learning-api";
+import { GrowthAcknowledgement } from '../game/GrowthAcknowledgement';
 
 export function PersistentRecall({ cards }: { cards: QuranRecallCard[] }) {
   const { session } = useAuth();
@@ -35,12 +36,13 @@ export function PersistentRecall({ cards }: { cards: QuranRecallCard[] }) {
   function rate(rating: Rating) {
     if (!query.data || !item || pending) return;
     const input = { clientAttemptId: crypto.randomUUID(), sessionId: query.data.id, vocabularyId: item.vocabularyId, rating, expectedRevision: item.revision };
+    setReward(null); setNotice('');
     setPending(input); save.mutate(input);
   }
   return <section className="quran-recall surface-panel" aria-label="Saved meaning recall">
     <div className="recall-topline"><span>Saved meaning recall</span>{query.data && <span>{reviewed + 1} / {query.data.items.length}</span>}</div>
     {notice && <p role="status">{notice}</p>}
-    {reward && (reward.xp > 0 || reward.tokens > 0) && <p className="reward-feedback" role="status">A little growth: +{reward.xp} Knowledge XP{reward.tokens > 0 ? ` · +${reward.tokens} Build Tokens` : ''}. <Link className="text-link" to="/garden">Visit your garden →</Link></p>}
+    <GrowthAcknowledgement reward={reward}/>
     {query.isPending ? <p role="status">Resuming your recall session…</p> : query.isError ? <p role="alert">{query.error.message} <button className="reveal-button" onClick={() => void query.refetch()}>Retry session</button></p> : !query.data ? <>
       <h2>A practice that stays with you.</h2><p>Reveal a contextual meaning, then honestly rate your recall. Progress syncs to your account.</p>
       <button className="primary-button" disabled={start.isPending} onClick={() => start.mutate(false)}>Start saved recall</button>

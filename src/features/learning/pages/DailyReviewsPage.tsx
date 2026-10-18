@@ -7,6 +7,8 @@ import { fetchAlFatihah } from "@/lib/api";
 import { safeHttpsUrl } from "../../quran/quran-learning";
 import { learningApi, type AttemptSubmission, type PersistentSession, type Rating, type ReviewInbox, type ReviewPreview, type SavedAttempt } from "../learning-api";
 import { reviewDelay, reviewTime } from "../review-utils";
+import { JourneyArt } from '../../game/JourneyArt';
+import { GrowthAcknowledgement } from '../../game/GrowthAcknowledgement';
 
 const coordinateKey = (word: { surah: number; ayah: number; word: number }) => `${word.surah}:${word.ayah}:${word.word}`;
 const ratingDescriptions = { again: "Forgot the meaning", hard: "Remembered with effort", good: "Remembered correctly", easy: "Remembered instantly" };
@@ -54,6 +56,7 @@ function DailyInbox() {
   function rate(rating: Rating) {
     if (!active || !current || pending || preview.data?.revision !== current.revision) return;
     const input = { clientAttemptId: crypto.randomUUID(), sessionId: active.id, vocabularyId: current.vocabularyId, rating, expectedRevision: current.revision };
+    setReward(null); setNotice('');
     setPending(input); save.mutate(input);
   }
   const localDate = (value: string) => new Intl.DateTimeFormat(undefined, { timeZone: data!.timezone, dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
@@ -81,7 +84,7 @@ function DailyInbox() {
       <p className="muted-copy">FSRS adapts intervals to your reviews using a 90% target retention. It is an estimate, not a promise or a mastery score. {data.reviewedToday.attempts} review {data.reviewedToday.attempts === 1 ? "event" : "events"} saved today.</p>
     </section>
     {notice && <p className="review-notice" role="status">{notice}</p>}
-    {reward && (reward.xp > 0 || reward.tokens > 0) && <p className="reward-feedback" role="status">A little growth: +{reward.xp} Knowledge XP{reward.tokens > 0 ? ` · +${reward.tokens} Build Tokens` : ''}. <Link to="/garden" className="text-link">Visit your garden →</Link></p>}
+    <GrowthAcknowledgement reward={reward}/>
     {source.isError || (source.data && !ready) ? <section className="surface-panel review-source-state" role="alert"><h2>Source content is unavailable.</h2><p>Your inbox and schedules are safe. Arabic, meanings and recordings are never substituted.</p><button className="reveal-button" onClick={() => void source.refetch()}>Retry Quran source</button></section> : null}
     {active ? <section className="surface-panel daily-review-card" aria-label="Daily recall session">
       <div className="review-card-topline"><span><Sparkles size={16} /> Daily recall</span><span>{handled} / {active.items.length} words handled</span></div>
@@ -122,6 +125,6 @@ function DailyInbox() {
 
 export function DailyReviewsPage() {
   const { session, loading } = useAuth();
-  return <><div className="page-heading"><div><p className="eyebrow">A DAILY MOMENT WITH YOUR WORDS</p><h1>Return. Recall.<br /><em>Remember.</em></h1><p className="heading-description">An adaptive review schedule for Quranic Arabic, one word in context at a time.</p></div></div>
-    {loading ? <p role="status">Checking your session…</p> : !session ? <section className="empty-panel"><CalendarCheck size={32} /><h2>Your reviews, remembered.</h2><p>Sign in to see your private daily inbox. Quran reading and anonymous practice stay open to everyone.</p><Link className="primary-button" to="/account">Sign in for daily reviews</Link><Link className="text-link" to="/quran/al-fatihah">Read without signing in</Link></section> : <DailyInbox key={session.user.id} />}</>;
+  return <div className="journey-page"><div className="page-heading journey-heading"><div><Link className="journey-back" to="/">← Back to your world</Link><p className="eyebrow">A DAILY MOMENT WITH YOUR WORDS</p><h1>Return. Recall.<br /><em>Remember.</em></h1><p className="heading-description">An adaptive review schedule for Quranic Arabic, one word in context at a time.</p></div><JourneyArt/></div>
+    {loading ? <p role="status">Checking your session…</p> : !session ? <section className="empty-panel"><CalendarCheck size={32} /><h2>Your reviews, remembered.</h2><p>Sign in to see your private daily inbox. Quran reading and anonymous practice stay open to everyone.</p><Link className="primary-button" to="/account">Sign in for daily reviews</Link><Link className="text-link" to="/quran/al-fatihah">Read without signing in</Link></section> : <DailyInbox key={session.user.id} />}</div>;
 }

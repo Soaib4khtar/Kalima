@@ -1,0 +1,15 @@
+.journey-heading { align-items:center; padding:5px 0 25px; border-bottom:1px solid var(--border); margin-bottom:30px; }
+.journey-art { width:220px; max-width:35%; height:auto; flex-shrink:0; }
+.journey-back { color:var(--muted-foreground); font-size:11px; min-height:44px; display:inline-flex; align-items:center; margin-bottom:12px; }
+.journey-page .account-panel { max-width:690px; margin-inline:auto; padding:38px; border-radius:20px; }
+.journey-page .account-panel h2 { font-size:31px; }.journey-page .google-signin-button { border-radius:12px; min-height:54px; }
+.journey-page .auth-email-fallback summary,.journey-page .review-timezone summary,.journey-page .review-context summary { min-height:44px; display:flex; align-items:center; cursor:pointer; }
+.journey-page .review-overview { border-radius:19px; padding:27px 30px; }.journey-page .review-start,.journey-page .daily-review-card { border-radius:22px; border-top:3px solid var(--primary); padding:32px; box-shadow:0 15px 35px #071e1810; }
+.journey-page .review-overview>.muted-copy { font-size:11px; }.journey-page .review-timezone { margin-bottom:13px; }
+.journey-page .daily-review-arabic { margin-top:24px; line-height:2; }.journey-page .review-rating { min-height:90px; border-radius:12px; }
+.journey-page .review-word-inbox { border-radius:18px; }.journey-page .primary-button,.journey-page .icon-button { min-height:44px; }
+.growth-ack { display:flex; align-items:center; gap:17px; border:1px solid var(--border); border-radius:13px; padding:14px 18px!important; background:var(--accent); text-align:left; margin:16px 0; animation:reward-arrive .4s ease-out both; }
+.growth-ack>svg { width:45px; height:52px; flex-shrink:0; }.growth-ack>div { flex:1; }.growth-ack p { margin:0!important; color:var(--primary)!important; font-size:12px; line-height:1.6; }.growth-ack span { display:block; font-size:10px; color:var(--muted-foreground); margin-top:5px; }.growth-ack .text-link { min-height:44px; display:inline-flex; align-items:center; font-size:11px; }
+@keyframes reward-arrive { from { transform:translateY(4px); opacity:.3; } to { transform:translateY(0); opacity:1; } }
+@media(max-width:640px) { .journey-heading { gap:12px; flex-direction:row; align-items:center; }.journey-heading h1 { font-size:35px; }.journey-heading .eyebrow { font-size:8px; letter-spacing:1px; }.journey-art { width:100px; max-width:29%; }.journey-heading .heading-description { font-size:11px; }.journey-page .account-panel { padding:25px; }.journey-page .review-overview { padding:23px 20px; }.journey-page .review-start,.journey-page .daily-review-card { padding:25px 20px; }.growth-ack { flex-wrap:wrap; gap:10px; }.growth-ack>div { min-width:160px; }.growth-ack>.text-link { margin-left:55px; }.journey-page .review-rating { min-height:83px; } }
+@media(prefers-reduced-motion:reduce) { .growth-ack { animation:none!important; } }

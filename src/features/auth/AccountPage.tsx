@@ -6,6 +6,8 @@ import { useAuth } from "./auth-context";
 import { LearningSummary } from "../learning/LearningSummary";
 import { authErrorMessage } from "./auth-errors";
 import { googleAuthErrorMessage } from "./oauth-callback";
+import { JourneyArt } from '../game/JourneyArt';
+import '../game/journey.css';
 
 export function AccountPage() {
   const { session, loading } = useAuth();
@@ -68,8 +70,8 @@ export function AccountPage() {
     } catch { setError("Your sign-in session could not be refreshed. Try signing in again; saved learning is safe."); }
     finally { setBusy(false); }
   }
-  return <>
-    <div className="page-heading"><div><p className="eyebrow">YOUR LEARNING JOURNEY</p><h1>A little practice.<br /><em>Remembered.</em></h1></div></div>
+  return <div className="journey-page account-journey">
+    <div className="page-heading journey-heading"><div><Link className="journey-back" to="/">← Back to your world</Link><p className="eyebrow">YOUR LEARNING JOURNEY</p><h1>A little practice.<br /><em>Remembered.</em></h1><p className="heading-description">A quiet place for your words. A world that stays with you.</p></div><JourneyArt/></div>
     <section className="surface-panel account-panel" aria-label="Account">
       {loading ? <p role="status">Checking your session…</p> : session ? <>
         <h2>You’re signed in</h2><p>{session.user.email}</p>
@@ -104,5 +106,5 @@ export function AccountPage() {
       {notice && session && <p role="status">{notice}</p>}
     </section>
     {session && <LearningSummary key={session.user.id} />}
-  </>;
+  </div>;
 }

@@ -9,6 +9,7 @@
     "test:e2e": "tsc -p tsconfig.e2e.json && playwright test",
     "test:learning:e2e": "tsc -p tsconfig.e2e.json && playwright test -c playwright.learning.config.ts",
     "test:game": "npm --prefix server run test:game",
+    "world:public:check": "npm --prefix server run build && node scripts/verify-world-public.mjs --confirm-prelive",
     "game:db:check": "node server/scripts/game-development-upgrade.mjs",
     "game:db:upgrade": "node server/scripts/game-development-upgrade.mjs --apply",
     "auth:preflight": "node server/scripts/supabase-preflight.mjs",

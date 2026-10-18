@@ -1,56 +1,67 @@
-import { memo, useEffect, useRef } from 'react';
+import { memo, useId, type CSSProperties } from 'react';
+import type { Structure } from './game-api';
+import { useSceneActivity } from './use-scene-activity';
 
-/** Reusable code-native vector art. Never represents fabricated vocabulary. */
-export const WordPlant = memo(function WordPlant({ stage, variant = 0, attention = false }: { stage: number; variant?: number; attention?: boolean }) {
-  const flower = ['#e6b873', '#c9a0ce', '#f0b8a0'][variant % 3];
-  return <svg viewBox="0 0 160 170" aria-hidden="true" className={`word-plant${attention ? ' plant-attention' : ''}`}>
-    <ellipse cx="80" cy="149" rx="48" ry="13" fill="#102f29" opacity=".14" />
-    <path d="M31 139 79 118 129 139 80 161Z" fill="#b49b72" /><path d="M31 139v8l49 22v-8Zm49 22v8l49-22v-8Z" fill="#8f7959" />
-    {stage === 1 ? <><ellipse cx="80" cy="137" rx="11" ry="7" fill="#70533d" /><path d="M80 136q8-15 16-10-2 12-16 10" fill="#8fa76d" /></> : <g className="plant-leaves">
-      <path d={`M80 140Q${attention ? '69' : '82'} 100 80 ${stage > 2 ? 39 : 91}`} stroke="#52795b" strokeWidth="5" fill="none" strokeLinecap="round" />
-      <path d="M80 119Q45 123 43 94q28-8 37 25M80 102q35 5 39-25-29-5-39 25" fill="#7aa77b" />
-      {stage > 2 && <><path d="M80 81Q46 85 44 57q30-4 36 24" fill="#5f9171" /><path d="M80 61q29 8 32-19-25-5-32 19" fill="#94b889" /></>}
-      {stage > 3 && <><path d="M65 135Q29 131 31 109q28-5 34 26M89 133q37 5 43-22-31-10-43 22" fill="#4f8367" /><circle cx="80" cy="43" r="24" fill="#83a781" opacity=".55" /></>}
-      {stage === 5 && <g fill={flower}><circle cx="80" cy="25" r="11" /><circle cx="95" cy="37" r="11" /><circle cx="89" cy="54" r="11" /><circle cx="71" cy="54" r="11" /><circle cx="65" cy="37" r="11" /><circle cx="80" cy="40" r="8" fill="#f5df9f" /><circle cx="47" cy="68" r="7" /><circle cx="115" cy="86" r="6" /></g>}
-    </g>}
-    <path d="m114 143 8-3 6 3-8 3Zm-71-7 5-2 5 2-5 2Z" fill="#e7d6b7" />
+/** Original vector scenery. Environmental flowers are decoration, not learner plants. */
+export function Tree({x=0,y=0,scale=1,variant=0}:{x?:number;y?:number;scale?:number;variant?:number}) {
+  return <g transform={`translate(${x} ${y}) scale(${scale})`}><ellipse cy="7" rx="30" ry="10" fill="#244f43" opacity=".16"/>
+    <path d="M-5 8-3-58 5-58 7 8Z" fill="#7f7353"/><path d="m1-14-17-25m20 12 15-22" fill="none" stroke="#7f7353" strokeWidth="5"/>
+    <g className="tree-crown"><path d={variant%2?'M-31-42Q-45-64-22-81Q-22-111 2-111 29-110 27-85 55-65 29-41 0-24-31-42Z':'M-32-37Q-55-66-23-87Q-17-118 10-105Q34-112 36-78Q57-56 28-34Z'} fill={variant%2?'#386b53':'#487d5d'}/><path d="M-24-60Q-34-83-12-87Q-9-108 10-96 27-99 27-79 9-83 5-63Z" fill="#72a175"/><path d="M-26-50q10 15 30 8m6-45q12-2 14 11" fill="none" stroke="#a4bc86" strokeWidth="3" strokeLinecap="round" opacity=".6"/>{variant%3===1 && <g fill="#e4b87a"><circle cx="-18" cy="-65" r="3"/><circle cx="20" cy="-51" r="3"/><circle cx="11" cy="-88" r="3"/></g>}</g></g>;
+}
+export function FlowerPatch({x=0,y=0,scale=1}:{x?:number;y?:number;scale?:number}) {
+  return <g transform={`translate(${x} ${y}) scale(${scale})`}><path d="m-15 2 3-18M0 6V-19M14 2l3-15" stroke="#5f855b" strokeWidth="2"/><g fill="#eee0ac"><circle cx="-12" cy="-17" r="4"/><circle cx="0" cy="-20" r="5"/></g><circle cx="17" cy="-13" r="4" fill="#ce977f"/><path d="M-2 5q-14-15-20-9 5 10 20 9M7 6q10-13 19-8-6 9-19 8" fill="#6c9868"/></g>;
+}
+export const WordPlant=memo(function WordPlant({stage,variant=0,attention=false}:{stage:number;variant?:number;attention?:boolean}) {
+  const color=['#e5b467','#cf9ca7','#aca9d2'][variant%3];
+  return <svg viewBox="0 0 160 180" aria-hidden="true" className={`word-plant plant-stage-${stage}${attention?' plant-attention':''}`}>
+    <ellipse cx="80" cy="153" rx="48" ry="17" fill="#305344" opacity=".14"/><ellipse cx="80" cy="147" rx="40" ry="13" fill="#9b7754"/><ellipse cx="80" cy="144" rx="37" ry="11" fill="#b69269"/><path d="m48 145 7-3m37 10 6-2m-29-14 6 2" stroke="#dbbe8a" strokeWidth="2" strokeLinecap="round"/><path d="M80 146v14m0-7-10 6m10-3 11 6" stroke="#82694a" strokeWidth="1.5" fill="none"/>
+    {stage===1?<><ellipse cx="80" cy="139" rx="7" ry="10" transform="rotate(30 80 139)" fill="#614b36"/><path d="M79 137q-2-11 4-14" stroke="#d4b782" strokeWidth="2" fill="none"/></>:
+      <g className="plant-leaves" style={{'--plant-lean':`${variant%2?2:-2}deg`} as CSSProperties}><path d={`M80 145Q${variant%2?66:91} 108 80 ${stage>2?48:101}`} stroke="#467650" strokeWidth={stage>3?5:3.5} fill="none" strokeLinecap="round"/><path d="M79 125Q43 123 40 97q34-2 39 28M80 111q32 0 39-25-29-4-39 25" fill="#5e945d"/><path d="m47 103 24 16m40-26-24 15" stroke="#a1b97a" strokeWidth="1.4"/>
+        {stage>2 && <><path d="M79 90Q46 82 51 59q27 2 28 31M80 75q29-1 31-25-26-5-31 25" fill="#7aa56a"/><path d="m55 66 18 18m31-26-18 14" stroke="#b4c58a" strokeWidth="1.5"/><path d="M80 56q-19-19-8-31 18 5 8 31" fill="#80a374"/></>}
+        {stage>3 && <><path d="M70 143Q29 134 30 112q32 1 40 31M87 144q41-8 43-30-31-2-43 30" fill="#467d58"/><path d="M81 53q-16-6-12-19 13-15 26-1 6 14-14 20" fill={stage===5?color:'#c4b58a'}/></>}
+        {stage===5 && <g className="plant-bloom"><g fill={color}>{[0,60,120,180,240,300].map(a=><ellipse key={a} cx="80" cy="25" rx={variant%2?8:10} ry="15" transform={`rotate(${a} 80 41)`}/>)}</g><circle cx="80" cy="41" r="10" fill="#f3d995"/><circle cx="80" cy="41" r="4" fill="#a48146"/><path d="M58 98 45 82m56 27 17-16" stroke="#52845a" strokeWidth="2"/><circle cx="43" cy="79" r="7" fill={color}/><circle cx="120" cy="90" r="6" fill={color}/><g fill="#e9c77a"><path d="m39 42 2-5 2 5 5 2-5 2-2 5-2-5-5-2Z"/><circle cx="119" cy="38" r="2"/></g></g>}
+      </g>}
+    <path d="m41 151-9 3 9 2m77-5 10 4-9 3" fill="#cfc4a0"/>
   </svg>;
 });
-
-export function BuildingArt({ kind, built }: { kind: string; built: boolean }) {
-  return <svg viewBox="0 0 180 160" aria-hidden="true" className={`building-art${built ? ' is-built' : ''}`}>
-    <ellipse cx="90" cy="139" rx="65" ry="16" fill="#193b32" opacity=".12" />
-    {kind === 'garden' ? <><path d="m23 119 64-34 91 30-65 37Z" fill="#779c76" /><path d="m48 120 37-20 51 17-38 21Z" fill="#d1bb8d" /><path d="M74 119V77m35 47V64" stroke="#52765a" strokeWidth="5" /><path d="M73 98Q40 99 42 72q25-4 31 26m35-12q34 0 33-29-27-5-33 29" fill="#8db28a" /><circle cx="109" cy="54" r="16" fill="#edc291" /><path d="m30 133 11-5 11 4-11 6" fill="#b6c6a2" /></> : kind === 'bridge' ? <><path d="m20 104 66-36 76 25-61 38Z" fill="#8bb0ab" /><path d="M24 108 72 84 157 111v25l-30 10v-11q-32-35-51-13v-10l-31 14Z" fill="#c5b28a" /><path d="m24 107 47-26 87 27-27 16-59-19-27 16Z" fill="#ecdbb5" /><path d="M25 105V90m45-9V68m88 39V93" stroke="#8f8267" strokeWidth="5" /></> : <>
-      <path d="M42 70 97 46 143 68v59l-49 24-52-23Z" fill="#d8c6a2" /><path d="m94 92 49-24v59l-49 24Z" fill="#b4a182" />
-      <path d="M30 71 93 25 155 67 94 98Z" fill="#537b70" /><path d="m30 71 64 27v-8L30 63Z" fill="#789b87" />
-      <path d="M67 138v-25q12-22 24 0v35" fill="#637b66" /><path d="m107 104 13-6v18l-13 6Z" fill="#f2d49a" />
-      {kind !== 'library' && <><path d="M71 57V21l22-10 21 10v36L93 68Z" fill="#ded0b0" /><path d="m65 23 28-20 28 20-28 14Z" fill="#456d64" /></>}
-      <path d="M61 89v12m14-6v12" stroke="#f5dfab" strokeWidth="5" />
-    </>}
+function BuildingGraphic({kind}:{kind:string}) {
+  if(kind==='bridge')return <><path d="M13 122q69-55 157-12l-7 35q-35-9-45-2-18-47-43-8l-37 11Z" fill="#9f9a77"/><path d="M13 116q74-63 159-11l-15 18q-62-37-124 13Z" fill="#e4cf9e"/><path d="M19 112q73-58 147-9M34 117q57-42 115-11" fill="none" stroke="#a7926c" strokeWidth="2"/>{[27,51,80,110,140,163].map((x,i)=><g key={x}><path d={`M${x} ${112-Math.sin(i/5*Math.PI)*25}v-25`} stroke="#786e53" strokeWidth="4"/><circle cx={x} cy={87-Math.sin(i/5*Math.PI)*25} r="4" fill="#d1b47c"/></g>)}<path d="M28 87Q91 34 163 86" fill="none" stroke="#9b8963" strokeWidth="4"/></>;
+  if(kind==='garden')return <><path d="m20 140 67-26 81 24-74 31Z" fill="#758d5e"/><path d="m35 141 49-19 65 18-54 21Z" fill="#e0cda3"/><path d="M48 135V75l44-22 47 20v64l-46 21Z" fill="#b9cfad"/><path d="m93 97 46-24v64l-46 21Z" fill="#63896e"/><path d="M34 76 91 28l62 45-60 31Z" fill="#477a64"/><path d="M91 28v76M34 76l59 12 60-15M63 52l60 36m-2-38L64 90" fill="none" stroke="#d1bc88" strokeWidth="3"/><path d="M59 91v45m17-37v45m35-50v44m15-52v46" stroke="#e2d4af" strokeWidth="3"/><path d="m84 154v-33q10-19 20-2v28" fill="#284f43"/><g fill="#bdc594"><ellipse cx="47" cy="135" rx="16" ry="10"/><ellipse cx="145" cy="135" rx="15" ry="10"/></g><FlowerPatch x={45} y={130} scale={.65}/><FlowerPatch x={145} y={131} scale={.65}/><path d="m85 157 12-5 14 4-13 6" fill="#f3dfac"/></>;
+  const tower=kind==='academy',castle=kind==='castle';
+  return <><path d="m28 138 68-27 65 26-65 29Z" fill="#758567"/>{castle&&<><path d="M32 130V62l23-10 22 9v70m46-1V62l22-10 20 10v68" fill="#b6b69a"/><path d="m25 63 30-36 30 36-31 13m61-13 30-37 27 37-27 13" fill="#547b72"/></>}
+    <path d={tower?'M64 138V42l32-17 34 18v96l-33 18Z':'M43 139V79l53-26 52 25v60l-51 24Z'} fill="#e0cfab"/><path d={tower?'m97 59 33-16v96l-33 18Z':'m97 102 51-24v60l-51 24Z'} fill="#b9ad87"/><path d={tower?'M52 47 96 10l45 36-44 22Z':'M28 83 95 35l68 45-66 31Z'} fill={tower?'#4f7770':'#ac745b'}/><path d={tower?'m52 47 45 21v-7L52 40Z':'m28 83 69 28v-9L28 76Z'} fill={tower?'#719188':'#d29a73'}/><path d="M67 148v-29q12-22 25 0v37Z" fill="#4b6f5c"/><path d="m113 112 17-7v18l-17 7Z" fill="#e8bf72"/><path d="m115 115 13-5m-7-2v18" stroke="#988b63" strokeWidth="2"/>
+    {tower?<><path d="M78 76V58l11-5v20m19-8 11-5v17l-11 6Z" fill="#e4bb73"/><path d="M96 11V0l21 8-21 4" fill="#c1aa70"/></>:<><path d="M57 97v12m17-6v13" stroke="#f2db9e" strokeWidth="6"/><path d="m79 77 15-5 15 6-15 7Z" fill="#e8d8ae"/><path d="m94 72v13" stroke="#927e59" strokeWidth="1.5"/></>}
+    <path d="m63 153 17-6 15 6-17 7m15 2 15-5 12 4-16 7" fill="#e8d5ae"/><path d="M143 135q17-19 20-1-4 11-20 8" fill="#62875c"/><FlowerPatch x={42} y={145} scale={.5}/></>;
+}
+export function BuildingArt({kind,built}:{kind:string;built:boolean}) {
+  return <svg viewBox="0 0 190 180" aria-hidden="true" className={`building-art${built?' is-built':''}`}><ellipse cx="95" cy="153" rx="72" ry="19" fill="#214a3d" opacity=".15"/><BuildingGraphic kind={kind}/></svg>;
+}
+export function Landscape() {
+  const id=useId().replaceAll(':','');
+  return <svg className="landscape-art" viewBox="0 0 1000 700" aria-hidden="true"><defs><linearGradient id={`${id}-sky`} x2="0" y2="1"><stop stopColor="#e9e8cf"/><stop offset="1" stopColor="#aac2ab"/></linearGradient><linearGradient id={`${id}-grass`} x2=".8" y2="1"><stop stopColor="#bbcb93"/><stop offset="1" stopColor="#7ca779"/></linearGradient><linearGradient id={`${id}-water`} x2="1" y2="1"><stop stopColor="#a4c7ba"/><stop offset="1" stopColor="#507f78"/></linearGradient></defs>
+    <path d="M0 0h1000v700H0Z" fill={`url(#${id}-sky)`}/><circle cx="770" cy="127" r="65" fill="#fff1c5" opacity=".55"/><path d="M0 190q100-100 235-40t230 0 270 5 265-60v230H0Z" fill="#95b8a2" opacity=".5"/><path d="M0 243q140-130 322-28t350-5 328-40v182H0Z" fill="#6d9b87" opacity=".28"/><g fill="#fff9df" opacity=".45" className="scene-clouds"><path d="M120 117q20-32 49-9 21-27 42 0 28-2 32 11H120m444-54q22-29 48-12 25-16 35 12Z"/><path d="M803 202q34-30 56-6 29-15 53 7Z"/></g>
+    <ellipse cx="510" cy="608" rx="367" ry="59" fill="#3f7064" opacity=".14"/><path d="M89 422q20 145 129 180l234 77q64 20 134-4l254-94q96-41 80-150L530 238Z" fill="#597d65"/><path d="m112 466 18 67 100 62 13-62m475 33-6 66 58-21 12-68" fill="#728f6b"/><path d="M89 423Q63 348 235 295q116-30 209-78 87-40 164-10l199 85q167 63 113 159-19 38-131 78L554 626q-65 22-137-1L172 537q-59-23-83-114Z" fill={`url(#${id}-grass)`}/><path d="M117 420q105-77 215-46t191-33 225-14 137 58" stroke="#d5dca9" strokeWidth="3" opacity=".38" fill="none"/>
+    <path d="M483 620q-24-130 74-175t123-126" fill="none" stroke="#d9cda3" strokeWidth="43" strokeLinecap="round"/><path d="M483 620q-24-130 74-175t123-126M512 480q-133 5-223-92m271 57q87 96 222 99M512 480q-80-146-229-164" fill="none" stroke="#ecdcb3" strokeWidth="23" strokeLinecap="round"/>
+    <path d="M878 379q-136-11-119 89t-62 98q-60-20-88 41l-30 27q118-4 262-88 94-54 37-167" fill={`url(#${id}-water)`}/><path d="M860 402q-97-15-83 62t-77 83m42 31q48-24 58-57" fill="none" stroke="#d4e4c6" strokeWidth="3" opacity=".55" className="water-lines"/>
+    <g fill="#e3d2ab">{[[471,590],[477,557],[499,520],[558,448],[609,419],[644,382],[402,460],[350,434],[716,524]].map(([x,y],i)=><ellipse key={i} cx={x} cy={y} rx="10" ry="4" transform={`rotate(-20 ${x} ${y})`}/>)}</g><g fill="#5a8c66" opacity=".4"><ellipse cx="288" cy="516" rx="90" ry="29"/><ellipse cx="603" cy="291" rx="66" ry="24"/></g>
+    {[[186,396,1.1],[237,313,.8],[343,272,.75],[773,336,1.15],[863,430,.85],[213,493,.8],[354,567,.7],[611,582,.75],[759,594,.7]].map(([x,y,s],i)=><Tree key={i} x={x} y={y} scale={s} variant={i}/>)}
+    {[[278,468],[442,335],[586,358],[667,507],[800,463],[392,548]].map(([x,y],i)=><FlowerPatch key={i} x={x} y={y} scale={i%2?.8:1.15}/>)}
+    <path d="m164 462 13-5 18 9-6 10-24-3m643 92 20-6 14 8-11 8-24-3" fill="#aab696"/><path d="M306 575q-20 50-3 67m-5-44q-35-23-34 3 8 13 31 10m5 5q26-29 35-10-5 16-32 20" fill="#759264"/>
+    <g className="world-butterfly" fill="#d9aa79"><path d="M538 269q-20-22-23-6 2 14 22 8m2-1q17-23 22-8-1 13-22 10"/></g><g className="floating-leaf" fill="#c7b772"><path d="M135 238q25-6 17 15-17 5-17-15m696 35q21-2 14 16-15 0-14-16"/></g>
   </svg>;
 }
-
-export function WorldScene({ unlocked = [], lanterns = false, fountain = false }: { unlocked?: string[]; lanterns?: boolean; fountain?: boolean }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const node = ref.current;
-    if (!node) return;
-    let visible = false;
-    const update = () => { node.dataset.active = String(visible && !document.hidden); };
-    const observer = new IntersectionObserver(entries => { visible = entries[0]?.isIntersecting ?? false; update(); });
-    observer.observe(node); document.addEventListener('visibilitychange', update);
-    return () => { observer.disconnect(); document.removeEventListener('visibilitychange', update); };
-  }, []);
-  return <div className="world-scene" aria-hidden="true" ref={ref}>
-    <svg className="island-ground" viewBox="0 0 760 400"><ellipse cx="380" cy="305" rx="291" ry="62" fill="#142e2c" opacity=".12" /><path d="M69 228q34-58 126-84l164-66q41-16 86 0l222 94q46 18 36 63l-9 33-285 113L88 269Z" fill="#647f6a" /><path d="M79 222q-9-38 54-62l228-83q38-14 76 0l230 91q59 23 24 59L406 344 98 245Z" fill="#a4b59a" /><path d="m172 228 114-38 66-61 35 13-65 66 152 42 90-53 31 10-97 68-187-45-108 42Z" fill="#d9c9a7" /><path d="m172 228 114-38 66-61" stroke="#efe2c4" strokeWidth="3" opacity=".5" fill="none" />
-      {[ [157,190], [620,196], [510,129], [241,285], [552,249] ].map(([x,y],i) => <g key={i} transform={`translate(${x},${y})`}><ellipse cy="12" rx="20" ry="6" fill="#52715a" opacity=".22" /><path d="M0 15V-19" stroke="#738268" strokeWidth="4" /><ellipse cy="-21" rx="19" ry="27" fill={i%2 ? '#799b78':'#6e8c70'} /><ellipse cx="-5" cy="-30" rx="9" ry="12" fill="#91ac87" opacity=".65" /></g>)}
-      {lanterns && [ [275,210], [398,243], [536,223] ].map(([x,y]) => <g key={x} transform={`translate(${x},${y})`}><path d="M0 8v-25" stroke="#667661" strokeWidth="3" /><circle cy="-20" r="7" fill="#f0cf85" className="lantern-glow" /></g>)}
-      {fountain && <g transform="translate(457 207)"><ellipse rx="24" ry="12" fill="#d4c6ab" /><ellipse cy="-4" rx="18" ry="8" fill="#82b1b2" /><path d="M0-6v-21m0 0q-14-4-14 8m14-8q14-4 14 8" stroke="#c2ded8" strokeWidth="3" fill="none" /></g>}
-      <path d="m590 132 8 6 8-8-6-4Z" fill="#e4c290" className="world-butterfly" />
-    </svg>
-    <div className="world-building world-garden"><BuildingArt kind="garden" built={unlocked.includes('garden')} /></div>
-    <div className="world-building world-library"><BuildingArt kind="library" built={unlocked.includes('library')} /></div>
-    <div className="world-building world-bridge"><BuildingArt kind="bridge" built={unlocked.includes('bridge')} /></div>
-    <span className="world-caption">A quiet world, grown through learning.</span>
-  </div>;
+const positions:Record<string,[number,number,number]>={garden:[39,73,24],library:[63,55,24],bridge:[76,81,22],academy:[24,47,17],castle:[64,32,19]};
+export function WorldScene({unlocked=[],lanterns=false,fountain=false,structures,onSelect,selected,celebration}:{unlocked?:string[];lanterns?:boolean;fountain?:boolean;structures?:Structure[];onSelect?:(key:string)=>void;selected?:string;celebration?:string}) {
+  const ref=useSceneActivity<HTMLDivElement>();
+  return <div className={`world-scene${onSelect?' scene-explorable':' scene-preview'}`} ref={ref}><div className="scene-edition" aria-hidden="true"><span>KALIMA · THE LIVING ATLAS</span><span>A WORLD GROWN SLOWLY</span></div><div className="scene-canvas"><Landscape/>
+    {Object.entries(positions).map(([kind,[x,y,size]])=>{const info=structures?.find(s=>s.key===kind),built=unlocked.includes(kind),ready=Boolean(info?.eligible&&!built);const style={left:`${x}%`,top:`${y}%`,width:`${size}%`} as CSSProperties;
+      return onSelect&&info?<button key={kind} className={`world-building building-hotspot${built?' built':ready?' build-ready':' build-locked'}${selected===kind?' selected-building':''}${celebration===kind&&built?' just-constructed':''}`} style={style} onClick={()=>onSelect(kind)} aria-label={`${info.title} — ${built?'Built':ready?'Ready to unlock':'Locked'}`} aria-pressed={selected===kind}><BuildingArt kind={kind} built={built||ready}/><span className="building-pin" aria-hidden="true">{built?'✓':ready?'+':'·'}</span><span className="building-label">{info.title}<small>{built?'A place you earned':ready?'Ready to unlock':`${info.required||1} ${info.required?'blooms':'learned word'}`}</small></span></button>:<div key={kind} className={`world-building${built?' built':''}`} style={style} aria-hidden="true"><BuildingArt kind={kind} built={built}/></div>;})}
+    {lanterns&&<svg className="scene-decorations" viewBox="0 0 1000 700" aria-hidden="true">{[[440,520],[548,453],[684,507]].map(([x,y])=><g key={x} transform={`translate(${x} ${y})`}><path d="M0 0v-38h12" stroke="#6d7053" strokeWidth="3" fill="none"/><circle className="lantern-glow" cx="12" cy="-27" r="17" fill="#f5d491" opacity=".3"/><path d="M6-33h12v15H6Z" fill="#f3d28d" stroke="#927b4f" strokeWidth="2"/></g>)}</svg>}
+    {fountain&&<svg className="scene-decorations" viewBox="0 0 1000 700" aria-hidden="true"><g transform="translate(571 526)"><ellipse rx="37" ry="17" fill="#c3bd98"/><ellipse cy="-6" rx="30" ry="13" fill="#8bb8a8"/><path d="M0-8v-48m0 7q-23-15-23 14m23-14q23-15 23 14" fill="none" stroke="#e7edd1" strokeWidth="4"/><ellipse cy="-32" rx="16" ry="5" fill="#d3cba8"/></g></svg>}
+    </div><div className="world-caption"><span className="scene-compass" aria-hidden="true">✧</span>{onSelect?'Choose a place to discover its story.':'A quiet world, grown through learning.'}<span aria-hidden="true">EST. ONE WORD AT A TIME</span></div></div>;
 }
+export function GardenTerrain(){return <svg className="garden-terrain" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMin slice" aria-hidden="true"><path d="M0 0h1000v700H0Z" fill="#b8c897"/><path d="M0 90Q390-40 1000 100v80Q400 40 0 210Z" fill="#9db580"/><path d="M0 460q300-200 1000-20v260H0Z" fill="#a5bb88"/><path d="M450-20q-90 130 30 220t-10 220 0 300" fill="none" stroke="#d6c89d" strokeWidth="38"/><path d="M0 85q370-120 1000 25" stroke="#ece0b8" strokeWidth="9" fill="none"/>{[[48,210,1.4],[943,206,1.3],[18,520,1.3],[977,551,1.5]].map(([x,y,s],i)=><Tree key={i} x={x} y={y} scale={s} variant={i}/>)}{[[120,76],[844,102],[63,389],[931,401],[155,648],[823,657]].map(([x,y],i)=><FlowerPatch key={i} x={x} y={y} scale={1.4}/>)}<path d="M67 601q33-66 80-12t69 44q-53 63-113 21Z" fill="#81a99a"/><path d="M98 624q34-18 64 7" fill="none" stroke="#cadbc0" strokeWidth="3"/><g className="world-butterfly" fill="#c78f6d"><path d="M805 75q-14-17-19-6 1 12 19 9m1-2q17-18 19-4-4 9-19 6"/></g></svg>;}
+export function LevelEmblem({level}:{level:number}) {return <div className="level-emblem" aria-label={`Level ${level}`}><svg viewBox="0 0 150 160" aria-hidden="true"><path d="M75 4 132 35v70l-57 48-57-48V35Z" fill="#bda16e"/><path d="M75 12 124 40v61l-49 42-49-42V40Z" fill="#315e4d" stroke="#e3c98e" strokeWidth="2"/><path d="M44 105Q18 82 43 50m63 55q25-23 1-55" stroke="#a8bd88" strokeWidth="2" fill="none"/>{[0,1,2,3].map(i=><g key={i} fill="#a8bd88"><ellipse cx={36+i*2} cy={60+i*11} rx="4" ry="8" transform={`rotate(-36 ${36+i*2} ${60+i*11})`}/><ellipse cx={114-i*2} cy={60+i*11} rx="4" ry="8" transform={`rotate(36 ${114-i*2} ${60+i*11})`}/></g>)}<path d="m75 24 3 8 8 3-8 3-3 8-3-8-8-3 8-3Z" fill="#e5cb8f"/></svg><span><small>LEVEL</small><strong>{level}</strong></span></div>;}
+export function QuestArt({kind}:{kind:string}) {return <svg className="quest-art" viewBox="0 0 220 110" aria-hidden="true"><path d="M7 89q75-40 198 0l-10 15H20Z" fill="#c4cea6"/><path d="M24 92q96-28 168 0" stroke="#e6d2a2" strokeWidth="12" fill="none"/><Tree x={31} y={88} scale={.53} variant={2}/><FlowerPatch x={178} y={94} scale={.8}/>
+    {kind==='discovery'||kind==='recovery'?<g transform="translate(64 -5) scale(.58)"><path d="M80 144v-61m0 18q-42-2-43-36 38-3 43 36m0-16q30-6 34-33-29-3-34 33" stroke="#517e54" strokeWidth="4" fill="#80a16d"/><ellipse cx="80" cy="145" rx="45" ry="12" fill="#b6956d"/>{kind==='recovery'&&<path d="M68 40q-20 30 0 36 20-6 0-36" fill="#7fa89b"/>}</g>:kind==='challenge'?<g transform="translate(67 20)"><path d="M0 39 41 23 81 39v38L41 91 0 77Z" fill="#bc9b6e"/><path d="M41 41Q15 13 0 35v34q20-13 41 10 22-23 43-10V35Q64 13 41 41Z" fill="#f4e7c5" stroke="#a78b62" strokeWidth="2"/><path d="M41 41v37m-30-35 19 5m-18 5 18 6m23-11 19-6m-19 15 19-6" stroke="#b9ad83" strokeWidth="2"/></g>:<g transform="translate(63 22)"><path d="m7 65 30-57 42 62-35 16Z" fill="#678b6e"/><path d="m19 61 18-35 26 39-20 11Z" fill="#bdd0a0"/><path d="M38 34q-21 27 4 30" fill="none" stroke="#f4dfae" strokeWidth="5"/><circle cx="40" cy="39" r="4" fill="#f4dfae"/></g>}
+    <g fill="#b19a65"><circle cx="170" cy="34" r="2"/><path d="m183 51 2-5 2 5 5 2-5 2-2 5-2-5-5-2Z"/></g></svg>;}

@@ -9,6 +9,11 @@ two-Google-account development acceptance**, not production security certificati
 Real-account game acceptance passed on 2026-10-18; see [verified reward balances,
 recovery, isolation, anti-cheat evidence and remaining limits](GROWING_KINGDOM_LIVE_ACCEPTANCE.md).
 
+The subsequent frontend-only **Living Atlas** overhaul replaces dashboard-like
+world screens with integrated building hotspots, planted terrain and illustrated
+journals. See [before/after captures, implementation and visual validation](FRONTEND_WORLD.md).
+Economy, APIs, database and the acceptance evidence below remain unchanged.
+
 ## Screens
 
 - Signed-in `/`: learning overview, level, XP, due count, Today’s Quests, world
