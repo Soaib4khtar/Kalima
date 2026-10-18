@@ -41,7 +41,7 @@ test("learning database gates refuse original/remote databases and migration is 
   }
   assert.deepEqual(await migrateLearning(database.connectionString), { status: "already-applied" });
   const columns = await database.pool.query("SELECT column_name FROM information_schema.columns WHERE table_schema='learning'");
-  assert.ok(!columns.rows.some((row) => /arabic|translation|meaning|audio|token|password/.test(row.column_name)));
+  assert.ok(!columns.rows.some((row) => /arabic|translation|meaning|audio|access_token|refresh_token|password|secret/.test(row.column_name)));
   assert.equal(createAuthFromEnv({}).configured, false);
   assert.equal(createLearningPoolFromEnv({ LEARNING_DATABASE_URL: "postgresql://localhost/kalima" }), undefined);
 });

@@ -6,7 +6,7 @@ Run the frontend with `npm install` and `npm run dev`. In a separate terminal, r
 
 Open the first Quranic learning experience at `/quran/al-fatihah`. When the server is connected to Quran Foundation, the page reads Al-Fatihah directly from the configured source, presents exact RTL Arabic and contextual word meanings, exposes available word/ayah audio, and runs a simple meaning-recall challenge. Without credentials or a valid prelive resource, it shows an explicit source-unavailable state and does not substitute bundled Quran text.
 
-The original general-Arabic prototype remains available: practice at `/`, browse and filter your collection at `/vocabulary`, and add words at `/vocabulary/new`. The form uses the existing `POST /api/vocabulary` endpoint and supports English, Arabic, transliteration, category, and levels A1/A2/B1.
+The original general-Arabic prototype remains available at `/practice` (also `/` when signed out); browse/filter at `/vocabulary`, and add words at `/vocabulary/new`. Signed-in `/` now opens the Growing Kingdom overview. The vocabulary form uses the existing `POST /api/vocabulary` endpoint and supports English, Arabic, transliteration, category, and levels A1/A2/B1.
 
 Reveal a card with Space, then choose Again (1), Difficult (2), or Know (3). Again repeats after up to two other cards; Difficult repeats after up to five. Know removes the word from the current session. With fewer cards remaining, repeats return sooner. A session finishes only when all words are marked Know.
 
@@ -15,6 +15,18 @@ The legacy prototype's review progress is stored in sessionStorage for the curre
 Run `npm test` for review queue and persistence tests, and `npm run build` for TypeScript checks and the production bundle.
 
 ## Accounts and persistent Quran learning
+
+The **Growing Kingdom** MVP is implemented: personalized Today’s Quests, a five-stage
+Memory Garden, server-graded source-association checks, My Kingdom, XP/Build Tokens,
+weekly challenges and gentle learning momentum. See [features, APIs, economy,
+anti-cheat rules, migration and validation](docs/GROWING_KINGDOM.md). Additive migration
+0003 is applied only to the isolated development store with all existing learning
+rows verified unchanged. The reward loop also passed genuine two-Google-account
+development acceptance on **2026-10-18**, including earned rewards, a naturally
+funded decoration purchase, replay/authorization checks and identity-switch
+recovery. See [real balances, test evidence and production-readiness limits](docs/GROWING_KINGDOM_LIVE_ACCEPTANCE.md).
+Automated browser fixtures remain synthetic. Public reading and existing verified
+authentication remain intact.
 
 Sign in at `/account` with **Continue with Google**; email codes remain an optional
 fallback. See [Google setup, PKCE callbacks and private live acceptance](docs/GOOGLE_AUTH.md).

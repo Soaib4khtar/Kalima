@@ -130,7 +130,7 @@ test("migration upgrades seeded starter activity without changing due dates, his
     await old.pool.query("INSERT INTO learning.vocabulary_progress(user_id,vocabulary_id,review_count,last_rating,last_reviewed_at,due_at,interval_seconds) VALUES($1,$2,1,'good','2026-10-16T12:00Z','2026-10-25T12:00Z',777600)", [user, vocabulary]);
     await old.pool.query("INSERT INTO learning.review_attempts(id,user_id,client_attempt_id,session_id,vocabulary_id,rating,scheduler_version,result,reviewed_at) VALUES($1,$2,$3,$4,$5,'good','starter-v1','{\"immutable\":true}','2026-10-16T12:00Z')", [attempt, user, randomUUID(), session, vocabulary]);
     const before = await old.pool.query("SELECT due_at,review_count,scheduler_version FROM learning.vocabulary_progress");
-    assert.deepEqual(await migrateLearning(old.connectionString), { status: "applied", versions: [2] });
+    assert.deepEqual(await migrateLearning(old.connectionString), { status: "applied", versions: [2, 3] });
     assert.deepEqual((await old.pool.query("SELECT due_at,review_count,scheduler_version FROM learning.vocabulary_progress")).rows, before.rows);
     assert.equal((await old.pool.query("SELECT fsrs_card FROM learning.vocabulary_progress")).rows[0].fsrs_card, null);
     assert.deepEqual((await old.pool.query("SELECT result FROM learning.review_attempts WHERE id=$1", [attempt])).rows[0].result, { immutable: true });

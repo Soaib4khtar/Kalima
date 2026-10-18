@@ -13,6 +13,8 @@ test("regular-browser monitor requires real verified OAuth claims and preserves 
   const identity = await testIdentityProvider();
   const verifier = createJwtVerifier(identity.issuer, createRemoteJWKSet(new URL(`${identity.issuer}/.well-known/jwks.json`)));
   const monitor = createGoogleBrowserMonitor(verifier, decodeJwt);
+  const starts: { user: string; path: string }[] = [];
+  monitor.setMutationObserver((user, path) => starts.push({ user: user.id, path }));
   const messages: unknown[][] = [];
   context.mock.method(console, "log", (...values: unknown[]) => { messages.push(values); });
   const subject = randomUUID(), other = randomUUID(), session = randomUUID(), attemptId = randomUUID();
@@ -46,6 +48,15 @@ test("regular-browser monitor requires real verified OAuth claims and preserves 
     assert.equal(user.identity.subject, subject); assert.equal(user.bookmarks.length, 1); assert.equal(user.reviews.length, 1);
     assert.equal(user.sessions.size, 1); assert.equal(user.tokens.size, 1);
     await call(token, "/attempts", false); assert.equal(user.reviews.length, 1);
+    const priorStarts = starts.length;
+    await call('forged-SYNTHETIC-PRIVATE', '/game/cosmetics/lanterns');
+    assert.equal(starts.length, priorStarts, 'unverified requests cannot trigger acceptance retries');
+    await call(token, '/game/cosmetics/lanterns', false);
+    assert.equal(starts.length, priorStarts, 'Node retries cannot recursively trigger more retries');
+    await call(token, '/game/cosmetics/lanterns');
+    assert.equal(starts.length, priorStarts + 1);
+    assert.equal(user.cosmetics.at(-1).key, 'lanterns');
+    assert.equal(starts.at(-1)?.path, '/api/learning/game/cosmetics/lanterns');
     const nextToken = await identity.token(subject, { app_metadata: { providers: ["email", "google"] }, amr: [{ method: "oauth" }], session_id: randomUUID() });
     await call(nextToken, "/profile"); assert.equal(user.sessions.size, 2); assert.equal(user.tokens.size, 2);
     assert.ok(!JSON.stringify(messages).includes(token)); assert.ok(!JSON.stringify(messages).includes(subject));

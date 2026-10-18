@@ -7,7 +7,7 @@ export interface PersistentSession { id: string; surah: number; kind: "practice"
   items: (Coordinate & { vocabularyId: string; reviewed: boolean; revision: number; availableAt: string; reviewEvents: number; skipped: boolean })[] }
 export type Rating = "again" | "hard" | "good" | "easy";
 export interface AttemptSubmission { clientAttemptId: string; sessionId: string; vocabularyId: string; rating: Rating; expectedRevision?: number }
-export interface SavedAttempt { attemptId: string; reviewedAt: string; dueAt: string; reviewCount: number; session: PersistentSession }
+export interface SavedAttempt { attemptId: string; reviewedAt: string; dueAt: string; reviewCount: number; session: PersistentSession; gamification?: { xp: number; tokens: number } }
 export interface LearningProgress {
   totalReviews: number; reviewedWords: number; dueWords: number; bookmarkedWords: number;
   items: (Coordinate & { vocabularyId: string; reviewCount: number; dueAt: string; lastRating: Rating })[];

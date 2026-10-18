@@ -228,7 +228,11 @@ the development Supabase project's **Authentication > Email > SMTP Settings**:
   for the primary real learner. Resume independent re-login and the second-user
   flow only after real delivery succeeds. No automatic email retries are used.
 
-### Proposed next slice: a small, auditable reward ledger
+### Historical proposal: a small, auditable reward ledger
+
+This proposal is now superseded by the implemented [Growing Kingdom policy](GROWING_KINGDOM.md).
+That guide is authoritative for current rewards, quests and momentum. The notes
+below preserve the pre-gamification design rationale, not the active economy.
 
 Implement this only after real-account acceptance. Rewards must be derived in the
 same transaction from the committed review's **before** state, not client claims

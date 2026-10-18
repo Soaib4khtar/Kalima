@@ -4,10 +4,16 @@ import type { LearnerIdentity } from "../auth/auth.js";
 import { AppError } from "../../utils/app-error.js";
 import { type AttemptInput, type AttemptResult, type LearningItem, type LearningSession, type ReferenceInput } from "./learning.schemas.js";
 import { bootstrapCard, restoreCard, scheduleCard, serializeCard, serializeLog, previewCard, isLearning, memoryState, SCHEDULER_PARAMETERS, SCHEDULER_VERSION } from "./learning.scheduler.js";
+import { GameRepository } from '../game/game.repository.js';
+import { ECONOMY } from '../game/game.policy.js';
+import type { QuranSurahResult } from '../quran/quran.schemas.js';
 
 type Sql = Pick<Pool, "query"> | PoolClient;
 export class LearningRepository {
-  constructor(private readonly pool: Pool, private readonly clock: () => Date = () => new Date()) {}
+  readonly game: GameRepository;
+  constructor(private readonly pool: Pool, private readonly clock: () => Date = () => new Date()) {
+    this.game = new GameRepository(pool, clock);
+  }
 
   async profile(identity: LearnerIdentity) {
     const { rows } = await this.pool.query<{ id: string; displayName: string | null; timezone: string }>(
@@ -19,9 +25,23 @@ export class LearningRepository {
 
   async updateProfile(user: string, displayName: string | null | undefined, timezone?: string) {
     if (timezone && !(await this.pool.query("SELECT 1 FROM pg_timezone_names WHERE name=$1", [timezone])).rowCount) throw new AppError(400, "INVALID_TIMEZONE", "Select a supported IANA timezone");
-    const result = await this.pool.query(`UPDATE learning.profiles SET display_name=CASE WHEN $2 THEN $3 ELSE display_name END,
+    return this.transaction(user, async db => {
+    if (timezone) {
+      const profile = (await db.query('SELECT timezone FROM learning.profiles WHERE id=$1', [user])).rows[0];
+      if (profile.timezone !== timezone) {
+        const account = (await db.query('SELECT timezone_changed_at FROM learning.game_accounts WHERE user_id=$1', [user])).rows[0];
+        const now = this.clock();
+        if (account?.timezone_changed_at && now.getTime() - account.timezone_changed_at.getTime() < ECONOMY.timezoneCooldownDays * 86400_000) {
+          throw new AppError(409, 'TIMEZONE_COOLDOWN', 'Timezone can be changed once every seven days. Existing quests keep their original day');
+        }
+        await db.query(`INSERT INTO learning.game_accounts(user_id,timezone_changed_at) VALUES($1,$2)
+          ON CONFLICT(user_id) DO UPDATE SET timezone_changed_at=EXCLUDED.timezone_changed_at`, [user, now]);
+      }
+    }
+    const result = await db.query(`UPDATE learning.profiles SET display_name=CASE WHEN $2 THEN $3 ELSE display_name END,
       timezone=COALESCE($4,timezone) WHERE id=$1 RETURNING id,display_name AS "displayName",timezone`, [user, displayName !== undefined, displayName ?? null, timezone ?? null]);
     return result.rows[0];
+    });
   }
 
   private async transaction<T>(user: string, action: (db: PoolClient) => Promise<T>): Promise<T> {
@@ -168,9 +188,10 @@ export class LearningRepository {
     });
   }
 
-  async startDaily(user: string, references: ReferenceInput[], includeNew: boolean) {
+  async startDaily(user: string, references: ReferenceInput[], includeNew: boolean, source?: Extract<QuranSurahResult, { status: 'ready' }>) {
     return this.transaction(user, async (db) => {
       const now = this.clock(); await this.refreshDaily(db, user, now);
+      if (source) await this.game.prepare(db, user, source, now);
       const active = await this.session(db, user, undefined, "daily", now);
       if (active) return { session: active, unavailableWords: 0 };
       const candidates = await db.query<{ id: string; ayah: number; word: number; due: Date | null; revision: number }>(`SELECT v.id,v.ayah,v.word,p.due_at AS due,COALESCE(p.revision,0) AS revision
@@ -200,9 +221,10 @@ export class LearningRepository {
     });
   }
 
-  async startSession(user: string, references: ReferenceInput[], dueOnly: boolean) {
+  async startSession(user: string, references: ReferenceInput[], dueOnly: boolean, source?: Extract<QuranSurahResult, { status: 'ready' }>) {
     return this.transaction(user, async (db) => {
       const now = this.clock();
+      if (source) await this.game.prepare(db, user, source, now);
       const active = await this.session(db, user);
       if (active) return active;
       const ids: string[] = [];
@@ -220,7 +242,7 @@ export class LearningRepository {
     });
   }
 
-  async attempt(user: string, input: AttemptInput): Promise<AttemptResult> {
+  async attempt(user: string, input: AttemptInput, source: Extract<QuranSurahResult, { status: 'ready' }> | null = null): Promise<AttemptResult> {
     return this.transaction(user, async (db) => {
       const previous = await db.query<{ session_id: string; vocabulary_id: string; rating: string; expected_revision: number | null; result: AttemptResult }>(
         "SELECT session_id,vocabulary_id,rating,expected_revision,result FROM learning.review_attempts WHERE user_id=$1 AND client_attempt_id=$2", [user, input.clientAttemptId]);
@@ -265,6 +287,10 @@ export class LearningRepository {
         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`, [result.attemptId, user, input.clientAttemptId, session.id, input.vocabularyId,
         input.rating, SCHEDULER_VERSION, JSON.stringify(result), input.expectedRevision ?? null, JSON.stringify(serializeCard(memory.card)),
         JSON.stringify(serializeCard(scheduled.card)), JSON.stringify(SCHEDULER_PARAMETERS), JSON.stringify(serializeLog(scheduled.log)), now]);
+      await this.game.recordReview(db, user, { id: result.attemptId, vocabularyId: input.vocabularyId, rating: input.rating,
+        kind: session.kind, before: serializeCard(memory.card), now }, source);
+      result.gamification = await this.game.eventReward(db, user, result.attemptId);
+      await db.query('UPDATE learning.review_attempts SET result=$2 WHERE id=$1', [result.attemptId, JSON.stringify(result)]);
       return result;
     });
   }

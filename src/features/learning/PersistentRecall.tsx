@@ -13,6 +13,7 @@ export function PersistentRecall({ cards }: { cards: QuranRecallCard[] }) {
   const [revealed, setRevealed] = useState<string | null>(null);
   const [pending, setPending] = useState<AttemptSubmission | null>(null);
   const [notice, setNotice] = useState("");
+  const [reward, setReward] = useState<{ xp: number; tokens: number } | null>(null);
   const query = useQuery({ queryKey: key, queryFn: () => learningApi<PersistentSession | null>("/sessions/current"), enabled: Boolean(user), retry: false });
   const start = useMutation({
     mutationFn: (dueOnly: boolean) => learningApi<PersistentSession | null>("/sessions", "POST", { dueOnly }),
@@ -24,6 +25,7 @@ export function PersistentRecall({ cards }: { cards: QuranRecallCard[] }) {
       cache.setQueryData(key, result.session.completed ? null : result.session);
       void cache.invalidateQueries({ queryKey: ["learning", user] });
       setPending(null); setRevealed(null);
+      setReward(result.gamification ?? null);
       setNotice(result.session.completed ? "Recall saved. Your next reviews are scheduled." : "Recall saved.");
     },
   });
@@ -38,6 +40,7 @@ export function PersistentRecall({ cards }: { cards: QuranRecallCard[] }) {
   return <section className="quran-recall surface-panel" aria-label="Saved meaning recall">
     <div className="recall-topline"><span>Saved meaning recall</span>{query.data && <span>{reviewed + 1} / {query.data.items.length}</span>}</div>
     {notice && <p role="status">{notice}</p>}
+    {reward && (reward.xp > 0 || reward.tokens > 0) && <p className="reward-feedback" role="status">A little growth: +{reward.xp} Knowledge XP{reward.tokens > 0 ? ` · +${reward.tokens} Build Tokens` : ''}. <Link className="text-link" to="/garden">Visit your garden →</Link></p>}
     {query.isPending ? <p role="status">Resuming your recall session…</p> : query.isError ? <p role="alert">{query.error.message} <button className="reveal-button" onClick={() => void query.refetch()}>Retry session</button></p> : !query.data ? <>
       <h2>A practice that stays with you.</h2><p>Reveal a contextual meaning, then honestly rate your recall. Progress syncs to your account.</p>
       <button className="primary-button" disabled={start.isPending} onClick={() => start.mutate(false)}>Start saved recall</button>

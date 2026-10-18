@@ -23,6 +23,7 @@ function DailyInbox() {
   const [revealed, setRevealed] = useState<string | null>(null);
   const [pending, setPending] = useState<AttemptSubmission | null>(null);
   const [notice, setNotice] = useState("");
+  const [reward, setReward] = useState<{ xp: number; tokens: number } | null>(null);
   const [zone, setZone] = useState("");
   const data = inbox.data;
   const now = data ? reviewTime(data.serverNow, data.receivedAt, tick) : 0;
@@ -43,6 +44,7 @@ function DailyInbox() {
   const save = useMutation({ mutationFn: (input: AttemptSubmission) => learningApi<SavedAttempt>("/attempts", "POST", input),
     onSuccess: (result) => {
       setPending(null); setRevealed(null);
+      setReward(result.gamification ?? null);
       setNotice(result.session.completed ? "Daily session saved. Your next reviews are scheduled." : "Review saved. Your schedule is up to date.");
       void refresh();
     } });
@@ -79,6 +81,7 @@ function DailyInbox() {
       <p className="muted-copy">FSRS adapts intervals to your reviews using a 90% target retention. It is an estimate, not a promise or a mastery score. {data.reviewedToday.attempts} review {data.reviewedToday.attempts === 1 ? "event" : "events"} saved today.</p>
     </section>
     {notice && <p className="review-notice" role="status">{notice}</p>}
+    {reward && (reward.xp > 0 || reward.tokens > 0) && <p className="reward-feedback" role="status">A little growth: +{reward.xp} Knowledge XP{reward.tokens > 0 ? ` · +${reward.tokens} Build Tokens` : ''}. <Link to="/garden" className="text-link">Visit your garden →</Link></p>}
     {source.isError || (source.data && !ready) ? <section className="surface-panel review-source-state" role="alert"><h2>Source content is unavailable.</h2><p>Your inbox and schedules are safe. Arabic, meanings and recordings are never substituted.</p><button className="reveal-button" onClick={() => void source.refetch()}>Retry Quran source</button></section> : null}
     {active ? <section className="surface-panel daily-review-card" aria-label="Daily recall session">
       <div className="review-card-topline"><span><Sparkles size={16} /> Daily recall</span><span>{handled} / {active.items.length} words handled</span></div>

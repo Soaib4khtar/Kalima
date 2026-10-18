@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import { BookOpen, CalendarCheck, Library, Moon, Sparkles, Sun } from "lucide-react";
+import { lazy, Suspense } from 'react';
 import { Link, NavLink, Route, Routes } from "react-router";
 import { LearningPage } from "./features/learning/pages/LearningPage";
 import { VocabularyPage } from "./features/vocabulary/pages/VocabularyPage";
@@ -10,9 +11,14 @@ import { AccountPage } from "./features/auth/AccountPage";
 import { useAuth } from "./features/auth/auth-context";
 import { DailyReviewsPage } from "./features/learning/pages/DailyReviewsPage";
 import { OAuthCallbackPage } from "./features/auth/OAuthCallbackPage";
+const HomePage = lazy(() => import('./features/game/HomePage'));
+const QuestsPage = lazy(() => import('./features/game/HomePage').then(m => ({ default: m.QuestsPage })));
+const GardenPage = lazy(() => import('./features/game/GardenPage'));
+const KingdomPage = lazy(() => import('./features/game/KingdomPage'));
+const ProgressPage = lazy(() => import('./features/game/ProgressPage'));
 
 export default function App() {
-  const { session } = useAuth();
+  const { session, loading } = useAuth();
   const [dark, setDark] = useState(() => {
     try { return localStorage.getItem("kalima-theme") !== "light"; } catch { return true; }
   });
@@ -26,15 +32,20 @@ export default function App() {
       <header className="site-header"><div className="nav-inner">
         <Link className="brand" to="/" aria-label="Kalima home"><span className="brand-symbol" lang="ar" aria-hidden="true">ك</span><span>kalima<span className="brand-dot">.</span></span></Link>
         <nav className="main-nav" aria-label="Main navigation">
-          <NavLink to="/" end><Sparkles size={16} />Practice</NavLink>
+          <NavLink to="/" end><Sparkles size={16} />{session ? 'Home' : 'Practice'}</NavLink>
           <NavLink to="/reviews"><CalendarCheck size={16} />Reviews</NavLink>
           <NavLink to="/quran/al-fatihah"><BookOpen size={16} />Quran</NavLink>
           <NavLink to="/vocabulary" end><Library size={16} />Words</NavLink>
         </nav>
         <div className="nav-actions"><NavLink className="account-link" to="/account">{session ? "Account" : "Sign in"}</NavLink><button className="icon-button" onClick={() => setDark(!dark)} aria-label={`Switch to ${dark ? "light" : "dark"} mode`} title={`Switch to ${dark ? "light" : "dark"} mode`}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button></div>
       </div></header>
-      <main id="main-content" className="page-container" tabIndex={-1}><Routes>
-        <Route path="/" element={<LearningPage />} />
+      <main id="main-content" className="page-container" tabIndex={-1}><Suspense fallback={<p role="status">Opening your learning space…</p>}><Routes>
+        <Route path="/" element={loading ? <p role="status">Restoring your learning session…</p> : session ? <HomePage /> : <LearningPage />} />
+        <Route path="/practice" element={<LearningPage />} />
+        <Route path="/quests" element={<QuestsPage />} />
+        <Route path="/garden" element={<GardenPage />} />
+        <Route path="/kingdom" element={<KingdomPage />} />
+        <Route path="/progress" element={<ProgressPage />} />
         <Route path="/quran/al-fatihah" element={<AlFatihahPage />} />
         <Route path="/account" element={<AccountPage />} />
         <Route path="/auth/callback" element={<OAuthCallbackPage />} />
@@ -42,7 +53,7 @@ export default function App() {
         <Route path="/vocabulary" element={<VocabularyPage />} />
         <Route path="/vocabulary/new" element={<AddVocabularyPage />} />
         <Route path="*" element={<div className="empty-panel"><h1>Page not found</h1><Link className="primary-button" to="/">Back to practice</Link></div>} />
-      </Routes></main>
+      </Routes></Suspense></main>
       <footer className="site-footer"><span>Little words. A world of possibility.</span><span>Made for your Arabic journey ✦</span></footer>
     </div>
   );

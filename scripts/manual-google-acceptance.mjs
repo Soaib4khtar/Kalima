@@ -6,8 +6,10 @@ import { randomUUID } from "node:crypto";
 // persistent token files, identity overrides or changes to application routes.
 export function createGoogleBrowserMonitor(auth, decodeJwt) {
   const verified = new Map(), users = new Map();
+  let mutationObserver;
   return {
     users,
+    setMutationObserver(observer) { mutationObserver = observer; },
     auth: { configured: auth.configured, async verify(token) {
       const identity = await auth.verify(token); // Real signature/claims first.
       const claims = decodeJwt(token);
@@ -20,6 +22,13 @@ export function createGoogleBrowserMonitor(auth, decodeJwt) {
       let raw = "";
       const originalPath = req.url?.split("?")[0];
       const learning = originalPath?.startsWith("/api/learning/");
+      // Optional acceptance-only retry hook, armed for one user-authorized
+      // cosmetic click. Only an already normally verified Google bearer qualifies.
+      if (req.headers.origin === 'http://localhost:5173' && req.method === 'POST' && learning) {
+        const proof = verified.get(req.headers.authorization?.slice(7));
+        const user = proof?.google && [...users.values()].find(item => item.identity.subject === proof.identity.subject);
+        if (user) mutationObserver?.(user, originalPath);
+      }
       const end = res.end;
       if (learning) res.end = function(chunk, ...rest) {
         if (chunk && Buffer.byteLength(chunk) < 1_000_000) raw = Buffer.isBuffer(chunk) ? chunk.toString("utf8") : String(chunk);
@@ -33,16 +42,23 @@ export function createGoogleBrowserMonitor(auth, decodeJwt) {
         const id = res.locals.profile.id;
         let user = users.get(id);
         if (!user) {
-          user = { id, identity: proof.identity, token, sessions: new Set(), tokens: new Set(), bookmarks: [], reviews: [] };
+          user = { id, identity: proof.identity, token, sessions: new Set(), tokens: new Set(), bookmarks: [], reviews: [],
+            gameViews: new Set(), challengeIssues: [], challengeAnswers: [], cosmetics: [] };
           users.set(id, user); console.log("A real Google-linked Supabase OAuth identity passed the normal backend JWT verifier. No identity or token is logged.");
         }
         user.token = token; user.sessions.add(proof.session); user.tokens.add(token);
+        if (req.headers.origin === 'http://localhost:5173' && req.method === 'GET' && originalPath.startsWith('/api/learning/game/')) user.gameViews.add(originalPath);
         // Node acceptance requests have no browser Origin, so retries below cannot
         // masquerade as a new learner-selected UI review.
         if (req.headers.origin === "http://localhost:5173" && req.method === "POST") {
           if (originalPath === "/api/learning/bookmarks") user.bookmarks.push(body.data);
           if (originalPath === "/api/learning/attempts" && !user.reviews.some((event) => event.saved.attemptId === body.data.attemptId))
             user.reviews.push({ input: { ...req.body }, saved: body.data });
+          if (originalPath === '/api/learning/game/challenges') user.challengeIssues.push({ id: body.data.id,
+            reference: body.data.reference, choiceIds: body.data.choices.map(choice => choice.id), sourceAttributed: body.data.attribution?.provider === 'Quran Foundation' });
+          if (/^\/api\/learning\/game\/challenges\/[a-f0-9-]+\/answer$/.test(originalPath)) user.challengeAnswers.push({
+            id: originalPath.split('/').at(-2), choiceId: req.body.choiceId, saved: body.data });
+          if (originalPath.startsWith('/api/learning/game/cosmetics/')) user.cosmetics.push({ key: originalPath.split('/').at(-1) });
         }
       });
       app(req, res);

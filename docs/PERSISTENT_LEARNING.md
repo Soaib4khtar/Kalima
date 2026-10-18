@@ -2,6 +2,11 @@
 
 ## Status and scope
 
+The next additive slice is now implemented: [The Growing Kingdom](GROWING_KINGDOM.md)
+documents quests, the Garden/Kingdom, transactional rewards, anti-cheat controls and
+migration 3. Existing activity was verified unchanged. The older hosted-auth
+evidence below is retained; it is not a claim of hosted acceptance of new rewards.
+
 Google is now the primary sign-in option: [Google development authentication](GOOGLE_AUTH.md)
 documents PKCE callbacks, private setup and the regular-browser live acceptance
 command. Email OTP remains an optional fallback; its historical SMTP blocker is

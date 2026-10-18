@@ -8,6 +8,7 @@
     "build": "tsc",
     "test": "tsx --test --test-isolation=none tests/*.test.ts",
     "test:auth": "tsx --test --test-isolation=none tests/auth.test.ts tests/supabase-preflight.test.ts",
+    "test:game": "tsx --test --test-isolation=none tests/game.test.ts",
     "corpus:validate": "tsx src/modules/corpus/validate-corpus-file.ts",
     "quran:prelive-resources": "node scripts/qf-prelive-resources.mjs",
     "start": "node dist/server.js",

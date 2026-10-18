@@ -17,8 +17,8 @@ export function checkedLearningUrl(value) {
   }
   return value;
 }
-export async function migrateLearning(connectionString, { throughVersion = 2 } = {}) {
-  if (![1, 2].includes(throughVersion)) throw new Error("Unknown learning migration target");
+export async function migrateLearning(connectionString, { throughVersion = 3 } = {}) {
+  if (![1, 2, 3].includes(throughVersion)) throw new Error("Unknown learning migration target");
   const checked = checkedLearningUrl(connectionString);
   const pool = new Pool({ connectionString: checked, connectionTimeoutMillis: 3_000, max: 1 });
   let db;
@@ -26,7 +26,7 @@ export async function migrateLearning(connectionString, { throughVersion = 2 } =
     db = await pool.connect();
     const identity = await db.query("SELECT current_database() AS name");
     if (identity.rows[0].name !== decodeURIComponent(new URL(checked).pathname.slice(1))) throw new Error("Database identity mismatch");
-    const migrations = await Promise.all(["0001_learning.sql", "0002_adaptive_reviews.sql"].slice(0, throughVersion).map(async (file, index) => {
+    const migrations = await Promise.all(["0001_learning.sql", "0002_adaptive_reviews.sql", "0003_growing_kingdom.sql"].slice(0, throughVersion).map(async (file, index) => {
       const sql = await readFile(new URL(`../learning-migrations/${file}`, import.meta.url), "utf8");
       return { version: index + 1, sql, checksum: createHash("sha256").update(sql).digest("hex") };
     }));

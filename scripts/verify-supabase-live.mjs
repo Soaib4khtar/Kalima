@@ -89,7 +89,11 @@ export async function runHostedAcceptance(args = process.argv.slice(2)) {
     vite = await createServer({ root, logLevel: "silent", server: { host: "localhost", port: 5173, strictPort: true } });
     await vite.listen();
     if (manualBrowser) {
-      await manual.runManualGoogleAcceptance({ monitor, pool: learningPool, apiOrigin, report,
+      if (args.includes('--growing-kingdom')) {
+        const { runGameAcceptance } = await import('./growing-kingdom-acceptance.mjs');
+        await runGameAcceptance({ monitor, pool: learningPool, apiOrigin, report,
+          check: requireCheck, setStage: value => { stage = value; }, resumePrimary: args.includes('--resume-game-primary') });
+      } else await manual.runManualGoogleAcceptance({ monitor, pool: learningPool, apiOrigin, report,
         check: requireCheck, setStage: (value) => { stage = value; }, resumePrimary: args.includes("--resume-primary-review") });
       return report;
     }

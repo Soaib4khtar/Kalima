@@ -5,6 +5,7 @@ import type { QuranContentProvider } from "../quran/quran-content-provider.js";
 import { AppError } from "../../utils/app-error.js";
 import { LearningRepository } from "./learning.repository.js";
 import { attemptSchema, coordinateSchema, timezoneSchema, type ReferenceInput } from "./learning.schemas.js";
+import { createGameRouter } from '../game/game.routes.js';
 
 export function createLearningRouter(auth: AuthVerifier, repository: LearningRepository | undefined, provider: QuranContentProvider) {
   const router = Router();
@@ -36,6 +37,7 @@ export function createLearningRouter(auth: AuthVerifier, repository: LearningRep
     })));
   }
   const uuid = (value: unknown) => z.uuid().parse(value);
+  if (repository) router.use('/game', createGameRouter(repository.game, provider));
   router.get("/profile", async (_req, res) => res.json({ success: true, data: res.locals.profile }));
   router.patch("/profile", async (req, res) => {
     const body = z.object({ displayName: z.string().trim().min(1).max(80).nullable().optional(), timezone: timezoneSchema.optional() })
@@ -64,10 +66,14 @@ export function createLearningRouter(auth: AuthVerifier, repository: LearningRep
     const refs = result.surah.verses.flatMap((verse) => verse.words.filter((word) => learnable.has(`${verse.number}:${word.position}`)).map((word) => ({
       surah: 1 as const, ayah: verse.number, word: word.position, sourceWordId: String(word.sourceId), sourceVerseId: String(verse.sourceId), environment,
     })));
-    res.json({ success: true, data: await repository!.startSession(res.locals.learnerId, refs, body.dueOnly) });
+    res.json({ success: true, data: await repository!.startSession(res.locals.learnerId, refs, body.dueOnly, result) });
   });
-  router.post("/attempts", async (req, res) => res.json({ success: true,
-    data: await repository!.attempt(res.locals.learnerId, attemptSchema.parse(req.body)) }));
+  router.post("/attempts", async (req, res) => {
+    const input = attemptSchema.parse(req.body);
+    // No provider network call is added to a review. Quests are prepared when
+    // source-backed sessions are issued (or when the world overview is opened).
+    res.json({ success: true, data: await repository!.attempt(res.locals.learnerId, input) });
+  });
   router.get("/history", async (req, res) => res.json({ success: true,
     data: await repository!.history(res.locals.learnerId, req.query.cursor === undefined ? undefined : uuid(req.query.cursor)) }));
   router.get("/progress", async (_req, res) => res.json({ success: true, data: await repository!.progress(res.locals.learnerId) }));
@@ -83,7 +89,7 @@ export function createLearningRouter(auth: AuthVerifier, repository: LearningRep
     const refs = result.surah.verses.flatMap((verse) => verse.words.filter((word) => word.translation?.trim()).map((word) => ({
       surah: 1 as const, ayah: verse.number, word: word.position, sourceWordId: String(word.sourceId), sourceVerseId: String(verse.sourceId), environment,
     })));
-    res.json({ success: true, data: await repository!.startDaily(res.locals.learnerId, refs, includeNew) });
+    res.json({ success: true, data: await repository!.startDaily(res.locals.learnerId, refs, includeNew, result) });
   });
   router.get("/review-sessions/preview", async (req, res) => {
     const query = z.object({ sessionId: z.uuid(), vocabularyId: z.uuid() }).strict().parse(req.query);
@@ -93,9 +99,12 @@ export function createLearningRouter(auth: AuthVerifier, repository: LearningRep
     const body = z.object({ sessionId: z.uuid(), vocabularyId: z.uuid(), expectedRevision: z.number().int().nonnegative() }).strict().parse(req.body);
     res.json({ success: true, data: await repository!.skipDaily(res.locals.learnerId, body.sessionId, body.vocabularyId, body.expectedRevision) });
   });
-  const errors: ErrorRequestHandler = (error, _req, _res, next) => {
+  const errors: ErrorRequestHandler = (error, _req, res, next) => {
     if (error instanceof z.ZodError) return next(new AppError(400, "INVALID_LEARNING_INPUT", "Invalid learning request"));
-    if (error instanceof AppError) return next(error);
+    if (error instanceof AppError) {
+      if (res.locals.learnerId) void repository?.game.audit(res.locals.learnerId, error.code).catch(() => {});
+      return next(error);
+    }
     next(new AppError(503, "LEARNING_UNAVAILABLE", "Learning storage is temporarily unavailable. Please retry"));
   };
   router.use(errors);

@@ -6,7 +6,7 @@ import { Pool } from "pg";
 import { generateKeyPair, exportJWK, SignJWT } from "jose";
 import { checkedLearningUrl, migrateLearning } from "../../scripts/learning-migrate.mjs";
 
-export async function disposableDatabase({ throughVersion = 2 } = {}) {
+export async function disposableDatabase({ throughVersion = 3 } = {}) {
   const settings = JSON.parse(await readFile(new URL("../../../.local/learning-postgres/connection.json", import.meta.url), "utf8"));
   if (settings.port !== 55439 || settings.user !== "kalima_learning_admin") throw new Error("Unexpected isolated test cluster");
   const name = `kalima_learning_test_${randomUUID().replaceAll("-", "")}`;

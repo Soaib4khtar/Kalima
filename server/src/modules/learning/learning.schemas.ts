@@ -15,6 +15,7 @@ export interface ReferenceInput extends Coordinate { sourceWordId: string; sourc
 export interface LearningItem extends Coordinate { vocabularyId: string; reviewed: boolean; revision: number; availableAt: string; skipped: boolean; reviewEvents: number }
 export interface LearningSession { id: string; surah: number; kind: "practice" | "daily"; completed: boolean; items: LearningItem[]; serverNow?: string }
 export interface AttemptResult {
+  gamification?: { xp: number; tokens: number };
   attemptId: string; reviewedAt: string; dueAt: string; reviewCount: number;
   schedulerVersion: string; session: LearningSession;
 }
