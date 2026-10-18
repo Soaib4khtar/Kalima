@@ -145,6 +145,15 @@ kbd { font-family: inherit; font-size: 9px; line-height: 1; border: 1px solid cu
 .spin { animation: spin 1s linear infinite; }
 .skip-link { position: fixed; left: 16px; top: -100px; background: var(--primary); color: var(--primary-foreground); padding: 12px; z-index: 100; border-radius: 8px; }
 .skip-link:focus { top: 16px; }
+.google-signin-button { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; min-height: 48px; margin: 22px 0 12px; padding: 12px 20px; border: 1px solid #747775; border-radius: 8px; background: #fff; color: #1f1f1f; font: 500 14px Arial, sans-serif; transition: box-shadow .18s, background .18s; }
+.google-signin-button:hover:not(:disabled) { background: #f8fafd; box-shadow: 0 2px 6px #0002; }
+.google-signin-button:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
+.google-signin-button svg { flex: 0 0 auto; }
+.google-signin-button:disabled { opacity: .65; cursor: wait; }
+.account-panel .auth-privacy-note { font-size: 12px; }
+.auth-email-fallback { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin: 22px 0; padding: 17px 0; }
+.auth-email-fallback summary { cursor: pointer; min-height: 28px; color: var(--muted-foreground); font-size: 13px; }
+.auth-account-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin-top: 18px; }
 
 /* Quran reading and contextual learning */
 .quran-page-heading { margin-bottom: 34px; }

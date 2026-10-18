@@ -2,6 +2,16 @@
 
 ## Status and scope
 
+Google is now the primary sign-in option: [Google development authentication](GOOGLE_AUTH.md)
+documents PKCE callbacks, private setup and the regular-browser live acceptance
+command. Email OTP remains an optional fallback; its historical SMTP blocker is
+not a dependency of Google OAuth. Backend JWT validation and learner identities
+are unchanged. Automated Google tests do not constitute hosted two-user acceptance.
+Genuine regular-browser acceptance subsequently passed on **2026-10-18**, including
+two real Google users, hosted refresh, independent-session recovery, persisted
+FSRS reviews, real due timing and bidirectional user isolation. See the linked
+Google guide for machine-verified versus owner-confirmed checks and limitations.
+
 The next milestone is implemented: [FSRS scheduling and the daily review inbox](ADAPTIVE_REVIEWS.md)
 at `/reviews`. That document describes the current scheduling policy, migration 2,
 timezone rules, validation and remaining pre-gamification acceptance work. The
@@ -326,8 +336,8 @@ afterward. Browser traces are disabled for account tests.
 configuration disabled and no provider content written to disk. A passing live
 reading check does not claim hosted Supabase email sign-in has succeeded.
 
-Next: complete two-different-real-user isolation and real-account daily-review
-acceptance, then calibrate retention and reward rules before gamification. The
+Real Google two-user isolation and daily-review acceptance are now complete; next
+calibrate retention and implement auditable reward rules before gamification. The
 due inbox and FSRS learning/relearning foundation are implemented. Before any public deployment: approve
 database adoption/hosting, least-privilege runtime credentials, backups, TLS/CSP,
 rate/abuse limits, email delivery, privacy/terms, and account data export/deletion.

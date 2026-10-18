@@ -9,6 +9,7 @@ import "./App.css";
 import { AccountPage } from "./features/auth/AccountPage";
 import { useAuth } from "./features/auth/auth-context";
 import { DailyReviewsPage } from "./features/learning/pages/DailyReviewsPage";
+import { OAuthCallbackPage } from "./features/auth/OAuthCallbackPage";
 
 export default function App() {
   const { session } = useAuth();
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/" element={<LearningPage />} />
         <Route path="/quran/al-fatihah" element={<AlFatihahPage />} />
         <Route path="/account" element={<AccountPage />} />
+        <Route path="/auth/callback" element={<OAuthCallbackPage />} />
         <Route path="/reviews" element={<DailyReviewsPage />} />
         <Route path="/vocabulary" element={<VocabularyPage />} />
         <Route path="/vocabulary/new" element={<AddVocabularyPage />} />

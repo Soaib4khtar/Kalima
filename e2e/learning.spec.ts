@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 // All identity and Quran content here is synthetic. The learner DB is real and disposable.
 async function signIn(page: Page, email: string) {
   await page.goto("/account");
+  await page.getByText("Use an email code instead", { exact: true }).click();
   await page.getByLabel("Email address").fill(email);
   await page.getByRole("button", { name: "Send sign-in code", exact: true }).click();
   await page.getByLabel("Sign-in code", { exact: true }).fill("123456");
@@ -85,6 +86,7 @@ test("bookmarks and recall survive refresh, new devices, retries and sign-out", 
 
 test("invalid codes and failed account requests are clear without blocking public reading", async ({ page }) => {
   await page.goto("/account");
+  await page.getByText("Use an email code instead", { exact: true }).click();
   await page.getByLabel("Email address").fill("invalid@example.test");
   await page.getByRole("button", { name: "Send sign-in code", exact: true }).click();
   await page.getByLabel("Sign-in code", { exact: true }).fill("000000");
@@ -97,16 +99,23 @@ test("invalid codes and failed account requests are clear without blocking publi
 
 test("hosted SMTP and quota errors are actionable without echoing raw provider text", async ({ page }) => {
   await page.goto("/account");
+  await page.getByText("Use an email code instead", { exact: true }).click();
   await page.getByLabel("Email address").fill("development@example.test");
-  let code = "email_address_not_authorized";
-  await page.route("**/auth/v1/otp", (route) => route.fulfill({ status: 422,
-    headers: { "x-supabase-api-version": "2024-01-01", "access-control-allow-origin": "http://127.0.0.1:4173", "access-control-expose-headers": "x-supabase-api-version" }, json: { code, msg: "PRIVATE_ERROR_SENTINEL" } }));
-  for (const [nextCode, message] of [["email_address_not_authorized", "SMTP"], ["over_email_send_rate_limit", "rate limit"], ["otp_disabled", "disabled"], ["captcha_failed", "CAPTCHA"]]) {
-    code = nextCode;
+  let code: string | undefined = "email_address_not_authorized";
+  let status = 422;
+  let requests = 0;
+  await page.route("**/auth/v1/otp", (route) => {
+    requests++;
+    return route.fulfill({ status, headers: { "x-supabase-api-version": "2024-01-01", "access-control-allow-origin": "http://127.0.0.1:4173", "access-control-expose-headers": "x-supabase-api-version" }, json: { code, msg: "PRIVATE_ERROR_SENTINEL" } });
+  });
+  const cases: [string | undefined, string, number][] = [["email_address_not_authorized", "SMTP", 422], ["over_email_send_rate_limit", "rate limit", 429], ["otp_disabled", "disabled", 422], ["captcha_failed", "CAPTCHA", 422], ["unexpected_failure", "Auth logs", 500], [undefined, "Auth logs", 503], [undefined, "rate limit", 429]];
+  for (const [nextCode, message, nextStatus] of cases) {
+    code = nextCode; status = nextStatus;
     await page.getByRole("button", { name: "Send sign-in code", exact: true }).click();
     await expect(page.getByRole("alert")).toContainText(message);
     await expect(page.getByRole("alert")).not.toContainText("PRIVATE_ERROR_SENTINEL");
   }
+  expect(requests).toBe(cases.length);
 });
 
 test("daily inbox learns a bookmark, retries safely, waits for FSRS, and resumes across contexts", async ({ page, browser, isMobile }, info) => {
@@ -190,4 +199,88 @@ test("daily review source gaps and inbox errors preserve schedules without fabri
   await page.getByRole("button", { name: "Learn saved words", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "1 word(s) remain due because source meanings are unavailable." })).toBeVisible();
   await expect(page.getByRole("region", { name: "Daily recall session", exact: true })).toHaveCount(0);
+});
+
+test("Google PKCE sign-in restores reviews, refreshes and isolates two synthetic identities", async ({ page, browser, isMobile }, info) => {
+  // Synthetic OAuth chooser and signed identities only; this is NOT hosted Google acceptance.
+  async function google(current: Page, learner: "Alice" | "Bob") {
+    await current.goto("http://127.0.0.1:4173/account");
+    await current.getByRole("button", { name: "Continue with Google", exact: true }).click();
+    const choice = current.getByRole("link", { name: `Synthetic Google ${learner}`, exact: true });
+    await choice.waitFor();
+    await choice.evaluate((element, cohort) => { (element as HTMLAnchorElement).href += `&cohort=${cohort}`; }, info.project.name);
+    await choice.click();
+    await expect(current.getByRole("heading", { name: "You’re signed in", exact: true })).toBeVisible();
+    expect(new URL(current.url()).pathname).toBe("/account"); expect(new URL(current.url()).search).toBe("");
+  }
+  async function call(current: Page, path: string, body?: unknown) {
+    return current.evaluate(async ({ path, body }) => {
+      const session = JSON.parse(localStorage.getItem("kalima-auth")!);
+      const response = await fetch(`http://127.0.0.1:4174/api/learning${path}`, { method: body ? "POST" : "GET",
+        headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
+      return { status: response.status, body: await response.json() };
+    }, { path, body });
+  }
+  let exchanges = 0;
+  page.on("request", (request) => { if (request.url().includes("grant_type=pkce")) exchanges++; });
+  await google(page, "Alice"); expect(exchanges).toBe(1);
+  await page.goto("/quran/al-fatihah?word=1:1:1");
+  const panel = page.locator(isMobile ? ".quran-inline-word-panel" : ".quran-detail-column");
+  await panel.getByRole("button", { name: "Bookmark word", exact: true }).click();
+  await panel.getByRole("button", { name: "Remove bookmark", exact: true }).waitFor();
+  await page.goto("/reviews");
+  await page.getByRole("button", { name: "Learn saved words", exact: true }).click();
+  const recall = page.getByRole("region", { name: "Daily recall session", exact: true });
+  await recall.getByRole("button", { name: "Reveal meaning", exact: true }).click();
+  const submitted = page.waitForResponse((response) => response.url().endsWith("/api/learning/attempts") && response.request().method() === "POST");
+  await recall.getByRole("button", { name: /^Again / }).click();
+  const response = await submitted;
+  expect(response.status()).toBe(200);
+  const input = response.request().postDataJSON();
+  const saved = (await response.json()).data;
+  await expect(recall.getByRole("heading", { name: "Up to date for now." })).toBeVisible();
+  expect(Date.parse(saved.dueAt) - Date.parse(saved.reviewedAt)).toBe(60_000);
+  expect((await call(page, "/attempts", input)).body.data.attemptId).toBe(saved.attemptId);
+  expect((await call(page, "/attempts", { ...input, clientAttemptId: crypto.randomUUID() })).status).toBe(409);
+  await page.reload(); await expect(recall.getByRole("heading", { name: "Up to date for now." })).toBeVisible();
+  await page.goto("/account");
+  await page.getByText("Session controls", { exact: true }).click();
+  await page.getByRole("button", { name: "Refresh sign-in session", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Your sign-in session has been refreshed.");
+  expect((await call(page, "/progress")).body.data.totalReviews).toBe(1);
+  await page.goto("/account"); await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Continue with Google", exact: true })).toBeVisible();
+  const deviceContext = await browser.newContext(), otherContext = await browser.newContext();
+  const device = await deviceContext.newPage(), other = await otherContext.newPage();
+  await google(device, "Alice"); await device.goto("http://127.0.0.1:4173/reviews");
+  await expect(device.getByRole("heading", { name: "Up to date for now." })).toBeVisible();
+  expect((await call(device, "/history")).body.data.items[0].id).toBe(saved.attemptId);
+  expect((await call(device, "/bookmarks")).body.data.items).toHaveLength(1);
+  await google(other, "Bob");
+  expect((await call(other, "/bookmarks")).body.data.items).toHaveLength(0);
+  expect((await call(other, "/progress")).body.data.totalReviews).toBe(0);
+  expect((await call(other, "/history")).body.data.items).toHaveLength(0);
+  expect((await call(other, "/review-sessions/current")).body.data).toBeNull();
+  expect((await call(other, "/attempts", { ...input, clientAttemptId: crypto.randomUUID() })).status).toBe(404);
+  expect((await call(other, "/review-sessions/skip", { sessionId: input.sessionId, vocabularyId: input.vocabularyId, expectedRevision: 1 })).status).toBe(404);
+  expect((await call(device, "/progress")).body.data.totalReviews).toBe(1);
+  // Identity switching in the same tab must clear the prior learner's private cache.
+  await device.goto("http://127.0.0.1:4173/account"); await device.getByRole("button", { name: "Sign out", exact: true }).click();
+  await google(device, "Bob"); await device.goto("http://127.0.0.1:4173/reviews");
+  await expect(device.getByRole("heading", { name: "Nothing due right now." })).toBeVisible();
+  await expect(device.getByRole("region", { name: "Daily recall session", exact: true })).toHaveCount(0);
+  await deviceContext.close(); await otherContext.close();
+  await page.goto("/quran/al-fatihah"); await expect(page.locator(".quran-word-button")).toHaveCount(3);
+});
+
+test("Google callback cancellation and invalid callbacks scrub private parameters and preserve public reading", async ({ page }) => {
+  await page.goto("/auth/callback?error=access_denied&error_description=PRIVATE_SENTINEL&next=https://evil.example.test#access_token=PRIVATE_TOKEN");
+  await expect(page.getByRole("alert")).toContainText("cancelled");
+  await expect(page.locator("body")).not.toContainText("PRIVATE_SENTINEL");
+  expect(new URL(page.url()).search).toBe(""); expect(new URL(page.url()).hash).toBe("");
+  await page.getByRole("link", { name: "Read without signing in", exact: true }).click();
+  await expect(page.locator(".quran-word-button")).toHaveCount(3);
+  await page.goto("/auth/callback?code=SYNTHETIC_INVALID_CODE");
+  await expect(page.getByRole("alert")).toContainText("same browser");
+  expect(new URL(page.url()).search).toBe("");
 });

@@ -16,19 +16,23 @@ Run `npm test` for review queue and persistence tests, and `npm run build` for T
 
 ## Accounts and persistent Quran learning
 
+Sign in at `/account` with **Continue with Google**; email codes remain an optional
+fallback. See [Google setup, PKCE callbacks and private live acceptance](docs/GOOGLE_AUTH.md).
+Backend Supabase JWT verification and learner-data isolation are unchanged.
+
 Open **Reviews** at `/reviews` for the new FSRS-powered daily inbox: due/overdue and
 later-today vocabulary, new saved words, rating previews, relearning waits, saved
 IANA timezone, and resumable sessions with source-backed context/audio. Migration
 0002 is applied to the isolated development learning store with existing activity
 preserved. See [scheduler policy, APIs, safety, tests and limitations](docs/ADAPTIVE_REVIEWS.md).
-Real two-user isolation and a real-account daily-review walkthrough remain tracked
-acceptance requirements before gamification.
+Real Google two-user isolation and daily-review acceptance passed on **2026-10-18**;
+see the [genuine hosted evidence and limitations](docs/GOOGLE_AUTH.md).
 
-`/account` supports Supabase email-code authentication. Signed-in Al-Fatihah readers can bookmark source-verified occurrences, save self-rated recall attempts, resume a session after refresh/on another device, and view progress/history. Quran reading and anonymous recall remain public. A separate PostgreSQL development cluster stores activity and references only, never Quran text, glosses, translations, recordings, or authentication tokens. The original database and historical migrations are not adopted.
+`/account` prefers Supabase Google authentication, with optional email codes. Signed-in Al-Fatihah readers can bookmark source-verified occurrences, save self-rated recall attempts, resume a session after refresh/on another device, and view progress/history. Quran reading and anonymous recall remain public. A separate PostgreSQL development cluster stores activity and references only, never Quran text, glosses, translations, recordings, or authentication tokens. The original database and historical migrations are not adopted.
 
-For new environments, prepare the isolated store with `npm --prefix server run learning:db` and configure a development Supabase project using the two `.env.example` files. Hosted development acceptance passed on **2026-10-17**: real email-code login, ES256 JWT verification, refresh/sign-out, bookmarks/recall persistence, and recovery after an independent sign-in in a separate browser context. Two-different-real-user isolation remains untested. See [setup, acceptance evidence, security boundaries, and next steps](docs/PERSISTENT_LEARNING.md). `npm run test:learning:e2e` separately uses clearly marked synthetic identities/content and is not itself proof of hosted email delivery.
+For new environments, prepare the isolated store with `npm --prefix server run learning:db` and configure a development Supabase project using the two `.env.example` files. Historical email-code acceptance passed on **2026-10-17**. Genuine Google login, hosted refresh, independent-session recovery, daily FSRS persistence and two-real-user isolation passed on **2026-10-18**. See [setup and security boundaries](docs/PERSISTENT_LEARNING.md) and [Google acceptance evidence](docs/GOOGLE_AUTH.md). `npm run test:learning:e2e` separately uses clearly marked synthetic identities/content and is not itself proof of hosted login.
 
-After following the setup guide, run `npm run auth:preflight` for redacted read-only configuration/discovery checks. Use `npm run auth:accept -- --confirm-development` for an opt-in visible-browser hosted sign-in check; type email codes privately in that browser. Add `--cross-device --two-users` only when email delivery quotas permit three real sign-ins. The command retains development learning activity, does not run migrations, and never treats synthetic tests or a successful preflight as proof of hosted login.
+After following the Google guide, run `npm run auth:preflight -- --google` for redacted read-only discovery, then `npm run auth:google:accept -- --confirm-development` for opt-in regular-browser hosted checks. Sign in privately with each Google account; no credentials belong in terminal/chat. The command retains development activity, runs no migrations, and never treats synthetic tests or discovery as proof of login. The email acceptance commands remain available for the optional fallback when SMTP and quotas permit them.
 
 ## Quran Foundation development setup
 

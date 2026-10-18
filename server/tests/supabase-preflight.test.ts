@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { authPreflight } from "../scripts/supabase-preflight.mjs";
-import { checkLiveScope } from "../../scripts/verify-supabase-live.mjs";
+import { checkLiveScope, redactedOtpFailure } from "../../scripts/verify-supabase-live.mjs";
 
 // SYNTHETIC configuration only. No real project or hosted login is used here.
 const address = "https://abcdefghijklmnopqrst.supabase.co";
@@ -58,4 +58,27 @@ test("headed acceptance requires explicit dev confirmation and the exact isolate
     assert.throws(() => checkLiveScope(front, { ...dev, LEARNING_DATABASE_URL }, ["--confirm-development"]), /isolated/);
   }
   assert.throws(() => checkLiveScope(front, { ...dev, QF_ENV: "production" }, ["--confirm-development"]), /prelive/);
+});
+
+test("hosted email diagnostics expose only reviewed error codes and HTTP status", () => {
+  assert.deepEqual(redactedOtpFailure(429, { code: "over_email_send_rate_limit", message: key, email: key }),
+    { httpStatus: 429, code: "over_email_send_rate_limit" });
+  assert.deepEqual(redactedOtpFailure(500, { error_code: "unexpected_failure", message: key }),
+    { httpStatus: 500, code: "unexpected_failure" });
+  for (const body of [{ code: key, message: key }, { error: key }, key, null]) {
+    const diagnostic = redactedOtpFailure(key, body);
+    assert.deepEqual(diagnostic, { httpStatus: null, code: "unclassified" });
+    assert.ok(!JSON.stringify(diagnostic).includes(key));
+  }
+});
+
+test("Google readiness is independent of email delivery but requires its configured provider and signing keys", async () => {
+  const fetchImplementation = async (url: string) => Response.json(url.endsWith("settings") ? {
+    ...settings, external: { email: false, google: true, anonymous_users: false }, mailer_autoconfirm: true,
+  } : jwks);
+  const google = await authPreflight(front, back, { provider: "google", fetchImplementation });
+  assert.equal(google.status, "ready-for-manual-hosted-login"); assert.equal(google.settings.googleEnabled, true);
+  assert.equal(google.hostedLogin, "not-attempted"); assert.ok(!google.dashboardChecks.includes("SMTP-recipients-and-quota"));
+  const disabled = await authPreflight(front, back, { provider: "google", fetchImplementation: async (url: string) => Response.json(url.endsWith("settings") ? settings : jwks) });
+  assert.deepEqual(disabled.blockers, ["GOOGLE_PROVIDER_DISABLED"]);
 });

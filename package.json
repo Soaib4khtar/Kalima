@@ -10,6 +10,8 @@
     "test:learning:e2e": "tsc -p tsconfig.e2e.json && playwright test -c playwright.learning.config.ts",
     "auth:preflight": "node server/scripts/supabase-preflight.mjs",
     "auth:accept": "npm --prefix server run build && node scripts/verify-supabase-live.mjs",
+    "reviews:accept": "npm --prefix server run build && node scripts/verify-supabase-live.mjs --daily-reviews",
+    "auth:google:accept": "npm --prefix server run build && node scripts/verify-supabase-live.mjs --daily-reviews --google --two-users --manual-browser",
     "test:live": "npm --prefix server run build && node scripts/verify-al-fatihah-live.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",

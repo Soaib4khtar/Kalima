@@ -32,6 +32,7 @@ export async function testIdentityProvider(port = 0) {
   const jwk = { ...await exportJWK(publicKey), kid: "test-key", alg: "ES256", use: "sig" };
   let issuer;
   const sessions = new Map();
+  const oauthFlows = new Map(), oauthCodes = new Map();
   async function token(subject = alice, claims = {}, options = {}) {
     return new SignJWT({ role: "authenticated", ...claims }).setProtectedHeader({ alg: "ES256", kid: "test-key" })
       .setIssuer(options.issuer ?? issuer).setAudience(options.audience ?? "authenticated").setSubject(subject)
@@ -47,6 +48,43 @@ export async function testIdentityProvider(port = 0) {
     let raw = "";
     for await (const chunk of req) raw += chunk;
     const body = JSON.parse(raw || "{}");
+    const requestUrl = new URL(req.url, "http://127.0.0.1");
+    if (req.method === "GET" && requestUrl.pathname === "/auth/v1/authorize") {
+      const redirect = new URL(requestUrl.searchParams.get("redirect_to"));
+      if (requestUrl.searchParams.get("provider") !== "google" || redirect.origin !== "http://127.0.0.1:4173" || redirect.pathname !== "/auth/callback" || requestUrl.searchParams.get("code_challenge_method")?.toLowerCase() !== "s256") {
+        res.writeHead(400); res.end('{}'); return;
+      }
+      const flow = randomUUID();
+      oauthFlows.set(flow, { redirect: redirect.href, challenge: requestUrl.searchParams.get("code_challenge") });
+      res.setHeader("Content-Type", "text/html");
+      res.end(`<h1>SYNTHETIC Google chooser - TEST ONLY</h1><a href="/__test/google?flow=${flow}&learner=alice">Synthetic Google Alice</a><br><a href="/__test/google?flow=${flow}&learner=bob">Synthetic Google Bob</a>`); return;
+    }
+    if (req.method === "GET" && requestUrl.pathname === "/__test/google") {
+      const flow = oauthFlows.get(requestUrl.searchParams.get("flow"));
+      const learner = requestUrl.searchParams.get("learner");
+      if (!flow || !["alice", "bob"].includes(learner)) { res.writeHead(400); res.end('{}'); return; }
+      oauthFlows.delete(requestUrl.searchParams.get("flow"));
+      const code = `SYNTHETIC_${randomUUID()}`;
+      const cohort = requestUrl.searchParams.get("cohort") ?? "default";
+      if (!/^[a-z0-9-]{1,40}$/.test(cohort)) { res.writeHead(400); res.end('{}'); return; }
+      const hex = createHash("sha256").update(`synthetic-google:${cohort}:${learner}`).digest("hex");
+      const subject = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+      oauthCodes.set(code, { ...flow, subject, email: `${cohort}-${learner}@example.test` });
+      const redirect = new URL(flow.redirect); redirect.searchParams.set("code", code);
+      res.writeHead(302, { Location: redirect.href }); res.end(); return;
+    }
+    if (req.url?.startsWith("/auth/v1/token?grant_type=pkce")) {
+      const flow = oauthCodes.get(body.auth_code);
+      if (!flow || typeof body.code_verifier !== "string" || createHash("sha256").update(body.code_verifier).digest("base64url") !== flow.challenge) {
+        res.writeHead(400); res.end(JSON.stringify({ code: "bad_code_verifier", msg: "Synthetic verifier rejected" })); return;
+      }
+      oauthCodes.delete(body.auth_code);
+      const result = { access_token: await token(flow.subject), token_type: "bearer", expires_in: 300,
+        refresh_token: `test-refresh-${flow.subject}`, user: { id: flow.subject, aud: "authenticated", role: "authenticated", email: flow.email,
+          email_confirmed_at: new Date().toISOString(), created_at: new Date().toISOString(), app_metadata: { provider: "google" },
+          identities: [{ provider: "google", id: flow.subject, user_id: flow.subject }], user_metadata: {} } };
+      sessions.set(result.refresh_token, result); res.end(JSON.stringify(result)); return;
+    }
     if (req.url === "/auth/v1/otp" || req.url?.startsWith("/auth/v1/logout")) { res.end("{}"); return; }
     if (req.url?.startsWith("/auth/v1/token?grant_type=refresh_token") && sessions.has(body.refresh_token)) {
       const previous = sessions.get(body.refresh_token);

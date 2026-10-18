@@ -8,6 +8,16 @@ const serverRequire = createRequire(new URL("../server/package.json", import.met
 class AcceptanceFailure extends Error {}
 const requireCheck = (condition, message) => { if (!condition) throw new AcceptanceFailure(message); };
 
+/** Outcome-only diagnostics. Never return raw messages, headers or body fields. */
+export function redactedOtpFailure(status, body) {
+  const codes = new Set(["email_address_not_authorized", "email_address_invalid", "over_email_send_rate_limit",
+    "over_request_rate_limit", "email_provider_disabled", "otp_disabled", "signup_disabled", "captcha_failed",
+    "unexpected_failure", "request_timeout", "validation_failed", "invalid_credentials"]);
+  const code = body && typeof body === "object" ? body.code ?? body.error_code : undefined;
+  return { httpStatus: Number.isInteger(status) && status >= 400 && status <= 599 ? status : null,
+    code: codes.has(code) ? code : "unclassified" };
+}
+
 export function checkLiveScope(frontend, backend, args) {
   requireCheck(args.includes("--confirm-development"), "Explicit --confirm-development is required. Use a dedicated development Supabase project only.");
   requireCheck((backend.QF_ENV ?? "prelive") === "prelive", "Only Quran Foundation prelive is allowed.");
@@ -30,20 +40,25 @@ export async function runHostedAcceptance(args = process.argv.slice(2)) {
   let api, vite, browser, learningPool, legacyPool;
   let stage = "configuration";
   const pages = [];
+  const google = args.includes("--google");
+  const manualBrowser = args.includes("--manual-browser");
   try {
     const { frontend, backend } = await readAuthEnvironment();
     // Refuse missing/insecure/mismatched settings before launching a browser or
     // reaching any external service. No environment values enter the report.
-    const offline = await authPreflight(frontend, backend, { offline: true });
+    const offline = await authPreflight(frontend, backend, { offline: true, provider: google ? "google" : "email" });
     if (offline.status !== "offline-configuration-valid") { report.blockers = offline.blockers; return report; }
     checkLiveScope(frontend, backend, args);
-    const preflight = await authPreflight(frontend, backend);
+    requireCheck(!manualBrowser || google, "Regular-browser acceptance is restricted to the Google development flow.");
+    stage = "hosted-discovery";
+    const preflight = await authPreflight(frontend, backend, { provider: google ? "google" : "email" });
     if (preflight.status !== "ready-for-manual-hosted-login") { report.blockers = preflight.blockers; return report; }
     // Force all runtime configuration to the inspected values; never fall back
     // to the original database or inherit a separate browser auth project.
     for (const [key, value] of Object.entries(backend)) if (value !== undefined) process.env[key] = value;
     process.env.DB_HOST = "127.0.0.1"; process.env.DB_PORT = "1";
     process.env.CORS_ORIGINS = "http://localhost:5173";
+    stage = "isolated-store-connection";
     const { createLearningPoolFromEnv } = await import("../server/dist/modules/learning/learning.db.js");
     learningPool = createLearningPoolFromEnv();
     const identity = await learningPool.query("SELECT current_database() AS name");
@@ -55,16 +70,31 @@ export async function runHostedAcceptance(args = process.argv.slice(2)) {
     const { LearningRepository } = await import("../server/dist/modules/learning/learning.repository.js");
     ({ pool: legacyPool } = await import("../server/dist/db.js"));
     legacyPool.query = legacyPool.connect = () => { throw new AcceptanceFailure("Original database access is forbidden."); };
-    api = createApp({ auth, learningRepository: new LearningRepository(learningPool) }).listen(0, "127.0.0.1");
+    let monitor, manual;
+    if (manualBrowser) {
+      manual = await import("./manual-google-acceptance.mjs");
+      const { decodeJwt } = await import(pathToFileURL(serverRequire.resolve("jose")).href);
+      monitor = manual.createGoogleBrowserMonitor(auth, decodeJwt);
+    }
+    stage = "local-api-start";
+    const app = createApp({ auth: monitor?.auth ?? auth, learningRepository: new LearningRepository(learningPool) });
+    api = manualBrowser ? (await import("node:http")).createServer(monitor.handle(app)).listen(0, "127.0.0.1") : app.listen(0, "127.0.0.1");
     await new Promise((done, reject) => { api.once("listening", done); api.once("error", reject); });
     const apiOrigin = `http://127.0.0.1:${api.address().port}`;
     process.env.VITE_API_URL = apiOrigin;
     process.env.VITE_SUPABASE_URL = frontend.VITE_SUPABASE_URL;
     process.env.VITE_SUPABASE_PUBLISHABLE_KEY = frontend.VITE_SUPABASE_PUBLISHABLE_KEY;
     const { createServer } = await import("vite");
+    stage = "local-frontend-start";
     vite = await createServer({ root, logLevel: "silent", server: { host: "localhost", port: 5173, strictPort: true } });
     await vite.listen();
+    if (manualBrowser) {
+      await manual.runManualGoogleAcceptance({ monitor, pool: learningPool, apiOrigin, report,
+        check: requireCheck, setStage: (value) => { stage = value; }, resumePrimary: args.includes("--resume-primary-review") });
+      return report;
+    }
     const { chromium } = await import("@playwright/test");
+    stage = "private-browser-start";
     browser = await chromium.launch({ headless: false, channel: process.env.PLAYWRIGHT_CHANNEL || undefined,
       args: ["--disk-cache-size=0", "--media-cache-size=0"] });
     const base = "http://localhost:5173";
@@ -85,17 +115,39 @@ export async function runHostedAcceptance(args = process.argv.slice(2)) {
     let previousOtpAt = 0;
     async function manualLogin(page, label) {
       // Respect Supabase's per-recipient cooldown; never automatically request mail.
-      const remaining = previousOtpAt + 61_000 - Date.now();
+      const remaining = google ? 0 : previousOtpAt + 61_000 - Date.now();
       if (remaining > 0) {
         console.log("Waiting for the development email cooldown before the next manual login.");
         for (let wait = remaining; wait > 0; wait -= 1_000) await new Promise((done) => setTimeout(done, Math.min(1_000, wait)));
       }
       await page.goto(`${base}/account`); await page.bringToFront();
+      if (google) {
+        console.log(`${label}: sign in privately with the requested GOOGLE account in this browser. Do not share credentials, codes or tokens. You have 20 minutes.`);
+        await page.getByRole("button", { name: "Continue with Google", exact: true }).click();
+      } else {
+        await page.getByText("Use an email code instead", { exact: true }).click();
+      }
       page.on("request", (request) => { if (request.url().startsWith(frontend.VITE_SUPABASE_URL) && new URL(request.url()).pathname === "/auth/v1/otp") previousOtpAt = Date.now(); });
-      console.log(`${label}: enter the real development email and its emailed code in the browser. Keep them out of the terminal/chat. You have 8 minutes.`);
-      await page.getByRole("heading", { name: "You’re signed in", exact: true }).waitFor({ timeout: 480_000 });
+      page.on("response", async (response) => {
+        if (response.url().startsWith(frontend.VITE_SUPABASE_URL) && new URL(response.url()).pathname === "/auth/v1/otp" &&
+          response.request().method() === "POST" && response.status() >= 400) {
+          const failure = redactedOtpFailure(response.status(), await response.json().catch(() => null));
+          report.emailDeliveryFailure = failure;
+          console.log(JSON.stringify({ hostedEmailDeliveryFailure: failure }));
+        }
+      });
+      page.on("requestfailed", (request) => {
+        if (request.url().startsWith(frontend.VITE_SUPABASE_URL) && new URL(request.url()).pathname === "/auth/v1/otp" && request.method() === "POST") {
+          report.emailDeliveryFailure = { httpStatus: null, code: "network-request-failed" };
+          console.log("Hosted email request failed at the browser network boundary. No raw URL, headers or error text are logged.");
+        }
+      });
+      const minutes = google || args.includes("--daily-reviews") ? 20 : 8;
+      if (!google) console.log(`${label}: enter the real development email and its emailed code in the browser. Keep them out of the terminal/chat. You have ${minutes} minutes.`);
+      await page.getByRole("heading", { name: "You’re signed in", exact: true }).waitFor({ timeout: minutes * 60_000 });
       const session = await getSession(page);
       requireCheck(Boolean(session?.access_token), "Hosted login did not provide a session.");
+      if (google) requireCheck(session.user?.identities?.some((identity) => identity.provider === "google"), "Hosted acceptance requires a genuine Google identity.");
       const verified = await auth.verify(session.access_token);
       requireCheck(verified.subject === session.user?.id, "Verified JWT identity differs from the SDK session.");
       const { decodeProtectedHeader, decodeJwt } = await import(pathToFileURL(serverRequire.resolve("jose")).href);
@@ -113,6 +165,12 @@ export async function runHostedAcceptance(args = process.argv.slice(2)) {
     requireCheck(ready?.status === "ready" && ready.surah.verses.length > 0, "Public Quran content is unavailable; acceptance cannot use fake content.");
     requireCheck((await fetch(`${apiOrigin}/api/learning/profile`)).status === 401, "Private learner API allowed anonymous access.");
     report.publicReading = "passed-without-sign-in";
+    if (args.includes("--daily-reviews")) {
+      const { runDailyReviewAcceptance } = await import("./daily-review-acceptance.mjs");
+      await runDailyReviewAcceptance({ args, page, ready, base, report, learningPool, newPage, getSession,
+        privateApi, manualLogin, google, auth, requireCheck, setStage: (value) => { stage = value; } });
+      return report;
+    }
     stage = "primary-hosted-login";
     const learner = await manualLogin(page, "First learner");
     report.hostedLogin = "succeeded"; report.jwt = { signature: "verified", algorithm: learner.algorithm, issuer: "verified", audience: "verified", expiration: "verified", identity: "verified" };
@@ -192,6 +250,7 @@ export async function runHostedAcceptance(args = process.argv.slice(2)) {
   } catch (error) {
     report.status = "failed"; report.failedStage = stage;
     report.failure = error instanceof AcceptanceFailure ? error.message : "Operation failed; raw exceptions, provider bodies, identities and tokens are suppressed.";
+    if (["EACCES", "EPERM", "EADDRINUSE", "ECONNREFUSED", "ENOENT"].includes(error?.code)) report.failureCode = error.code;
   } finally {
     for (const page of pages) {
       await page.evaluate(async () => {

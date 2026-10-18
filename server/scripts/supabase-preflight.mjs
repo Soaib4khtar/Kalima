@@ -30,9 +30,11 @@ function hostedOrigin(value) {
 }
 
 /** Read-only checks. No OTP requests, tokens, writes, admin keys or raw errors. */
-export async function authPreflight(frontend, backend, { offline = false, fetchImplementation = fetch } = {}) {
+export async function authPreflight(frontend, backend, { offline = false, fetchImplementation = fetch, provider = "email" } = {}) {
   const report = { status: "blocked", hostedLogin: "not-attempted", configuration: {}, blockers: [],
     dashboardChecks: ["dedicated-development-project", "email-OTP-templates", "site-and-redirect-URLs", "SMTP-recipients-and-quota", "active-signing-key", "CAPTCHA-policy"] };
+  if (provider === "google") report.dashboardChecks = ["dedicated-development-project", "Google-web-OAuth-client", "Google-consent-test-users", "Supabase-provider-callback", "app-callback-allowlist", "active-signing-key"];
+  if (!["email", "google"].includes(provider)) { report.blockers.push("UNSUPPORTED_ACCEPTANCE_PROVIDER"); return report; }
   for (const [name, env] of [["VITE_SUPABASE_URL", frontend], ["VITE_SUPABASE_PUBLISHABLE_KEY", frontend], ["SUPABASE_URL", backend]]) {
     report.configuration[name] = Boolean(env[name]?.trim());
     if (!report.configuration[name]) report.blockers.push(`MISSING_${name}`);
@@ -58,11 +60,12 @@ export async function authPreflight(frontend, backend, { offline = false, fetchI
       const body = await response.json();
       if (kind === "settings") {
         if (typeof body.external?.email !== "boolean" || typeof body.disable_signup !== "boolean" || typeof body.mailer_autoconfirm !== "boolean") throw new Error();
-        report.settings = { emailEnabled: body.external.email, signupsEnabled: !body.disable_signup,
+        report.settings = { emailEnabled: body.external.email, googleEnabled: body.external.google === true, signupsEnabled: !body.disable_signup,
           emailConfirmationRequired: !body.mailer_autoconfirm, anonymousEnabled: body.external.anonymous_users === true };
-        if (!report.settings.emailEnabled) report.blockers.push("EMAIL_PROVIDER_DISABLED");
+        if (provider === "email" && !report.settings.emailEnabled) report.blockers.push("EMAIL_PROVIDER_DISABLED");
+        if (provider === "google" && !report.settings.googleEnabled) report.blockers.push("GOOGLE_PROVIDER_DISABLED");
         if (!report.settings.signupsEnabled) report.blockers.push("SIGNUPS_DISABLED");
-        if (!report.settings.emailConfirmationRequired) report.blockers.push("ENABLE_EMAIL_CONFIRMATION_FOR_ACCEPTANCE");
+        if (provider === "email" && !report.settings.emailConfirmationRequired) report.blockers.push("ENABLE_EMAIL_CONFIRMATION_FOR_ACCEPTANCE");
         if (report.settings.anonymousEnabled) report.blockers.push("DISABLE_ANONYMOUS_SIGN_IN_FOR_ACCEPTANCE");
       } else {
         if (!Array.isArray(body.keys)) throw new Error();
@@ -85,7 +88,7 @@ export async function authPreflight(frontend, backend, { offline = false, fetchI
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const { frontend, backend } = await readAuthEnvironment();
-    const report = await authPreflight(frontend, backend, { offline: process.argv.includes("--offline") });
+    const report = await authPreflight(frontend, backend, { offline: process.argv.includes("--offline"), provider: process.argv.includes("--google") ? "google" : "email" });
     console.log(JSON.stringify(report, null, 2));
     if (report.status === "blocked") process.exitCode = 1;
   } catch { console.error("Authentication preflight failed; all raw configuration and errors are suppressed."); process.exitCode = 1; }

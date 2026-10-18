@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { createOAuthCallbackCompletion } from "./oauth-callback";
 
 function configuredClient() {
   const address = import.meta.env.VITE_SUPABASE_URL?.trim();
@@ -17,3 +18,10 @@ function configuredClient() {
 
 // A publishable key is public configuration. Never put a secret/service-role key here.
 export const authClient = configuredClient();
+
+// Explicit PKCE callback: do not also enable SDK URL auto-detection, which would
+// exchange this single-use code twice. No extra provider-token store is created.
+export const oauthCompletion = window.location.pathname === "/auth/callback"
+  ? createOAuthCallbackCompletion(window.location.href, authClient?.auth ?? null,
+    () => window.history.replaceState(window.history.state, "", "/auth/callback"))()
+  : null;

@@ -133,8 +133,131 @@ All paths below `/api/learning` are authenticated and `no-store`:
   [PERSISTENT_LEARNING.md](PERSISTENT_LEARNING.md). No new hosted OTP acceptance or
   full live QF/audio sweep was claimed for this scheduler milestone.
 
-Before gamification: complete a real-account daily-review walkthrough and the
-**pending two-different-real-user isolation acceptance**; observe real review
+### Real-account daily acceptance
+
+For the primary Google flow, use the [Google authentication guide](GOOGLE_AUTH.md)
+and `npm run auth:google:accept -- --confirm-development`. It reuses the daily
+review checks with genuine JWTs and independently user-controlled Google sign-ins,
+without depending on SMTP. The email-specific command and historical delivery
+failure below remain relevant only to the optional OTP fallback.
+
+With the existing isolated cluster already running, close other development
+processes on port 5173 and run from the repository root:
+
+```powershell
+$env:PLAYWRIGHT_CHANNEL='chrome'
+npm run reviews:accept -- --confirm-development
+```
+
+This reuses the hosted acceptance command's development/project/store gates,
+normal Supabase verification, real Quran Foundation prelive provider, and server
+wall clock. It runs no migrations and explicitly forbids original-database access.
+Enter email codes privately in the visible browser. When a review appears, recall
+the word, reveal the answer and choose an **honest** rating yourself; the command
+does not supply a rating to make a test pass. Only real learning events are saved.
+
+The command checks the source-backed bookmark; actual submitted rating, FSRS
+state/log/parameters and due instant in PostgreSQL; API history; concurrent exact
+retries, stale revisions and conflicting IDs; early due rejection; reload;
+sign-out; and independent recovery in a clean browser context using a second
+email-code sign-in to the **same** account. It observes a natural due transition
+if the next learning step is within 11 minutes, otherwise reports that check as
+unperformed without moving the clock. Existing review events are compared for
+preservation. Public Quran reading is checked before login and after sign-out.
+No screenshots, traces, storage snapshots, credentials, JWTs or Quran responses
+are written to files. Result output contains outcomes and ratings only.
+
+The default run needs **two** email deliveries. `--two-users` adds a third delivery
+and requires an already approved different development account plus sufficient
+SMTP quota. Do not use it to bypass Supabase's delivery restrictions. It compares
+both accounts' API results with their own stored bookmarks/history/progress after
+a real learner-selected review for each, and rejects attempts in both directions
+to preview, grade or skip the other account's session or use its history cursor. A
+skipped second-user check stays explicitly pending. Separate browser contexts are
+not a physical second-device test. Failed or interrupted runs retain legitimate
+development activity; never reset a due date or delete history to rerun acceptance.
+
+Latest live attempt, **2026-10-17**: hosted configuration/discovery and public
+authentic reading passed, but the learner reported email-code delivery failure.
+The project owner identified **SMTP/sending HTTP 500** in Auth logs and confirmed
+custom SMTP is enabled; those administrative logs were not independently accessed
+by the acceptance command. The owner subsequently identified **Resend** and the
+failure category **sender or recipient not verified/authorized**. The exact sender
+domain, recipient restriction and provider configuration were not inspected.
+No successful hosted sign-in or new daily review is claimed for this attempt.
+A read-only isolated-store check still showed the pre-existing one learner,
+one bookmark and one historical review, zero FSRS events and zero daily sessions,
+with schema version 2. No migrations or new learning records were created.
+The approved second real account is available, but its live isolation check is
+blocked behind primary email delivery. Do not resend repeatedly or disable
+confirmation/authentication checks to get past this blocker.
+
+The app now classifies SDK code-less 5xx/429 and network failures without echoing
+raw provider messages. Future acceptance runs print only a reviewed error-code
+allowlist and numeric HTTP status, never provider messages/headers/identities.
+Post-fix validation: **20 frontend unit tests**, **9 auth/preflight tests**, and
+**2 focused desktop/mobile delivery-error browser tests** passed; TypeScript and
+lint passed. The browser cases are synthetic and send no real emails. Earlier
+focused scheduling/auth regressions passed **17 tests**. Follow the provider's
+SMTP configuration and [Supabase delivery troubleshooting](https://supabase.com/docs/guides/troubleshooting/not-receiving-auth-emails-from-the-supabase-project-OFSNzw)
+before resuming the opt-in live command. Earlier genuine authentication acceptance
+remains historical evidence, not proof that this new attempt passed.
+
+For this reported Resend authorization blocker, inspect **Resend Domains** and
+the development Supabase project's **Authentication > Email > SMTP Settings**:
+
+- If the sender is `onboarding@resend.dev`, Resend's test-domain restriction
+  permits delivery only to the address associated with the Resend account. It
+  does not authorize a second learner merely because Kalima approves that account.
+  See [Resend's testing-domain restriction](https://resend.com/docs/knowledge-base/403-error-resend-dev-domain).
+- To deliver to both real test learners, use an already verified, authorized
+  sending domain in the correct Resend team. Supabase's Sender email must use
+  that **exact** verified domain/subdomain; a verified subdomain does not authorize
+  its parent as the sender. See [domain mismatch guidance](https://resend.com/docs/knowledge-base/403-error-domain-mismatch).
+- The official [Supabase SMTP setup](https://resend.com/docs/send-with-supabase-smtp)
+  uses host `smtp.resend.com`, port `465`, username `resend`, and the appropriate
+  Resend API key as the password, entered privately in Supabase. Confirm that the
+  key can send from the selected domain/team. Do not copy it into `VITE_*`, logs,
+  chat or documentation. SMTP-only corrections require no Kalima env/key changes.
+- If no sending domain is verified, adding one needs authorized DNS verification.
+  Prefer an approved development subdomain, follow Resend's displayed records,
+  and do not remove/overwrite existing production MX/SPF records or buy resources
+  without approval. Do not use a simulated Resend delivery address as a real
+  learner or claim it proves hosted login.
+- After correction and checking quota, request **one** code manually in Kalima
+  for the primary real learner. Resume independent re-login and the second-user
+  flow only after real delivery succeeds. No automatic email retries are used.
+
+### Proposed next slice: a small, auditable reward ledger
+
+Implement this only after real-account acceptance. Rewards must be derived in the
+same transaction from the committed review's **before** state, not client claims
+or the rating label. An immutable ledger links each grant to its unique event and
+eligibility cycle; exact retries, rejected stale writes, skips, bookmark toggles
+and extra practice earn nothing. Suggested initial policy:
+
+- **5 XP once per occurrence** for introducing a new card; deleting/re-saving a
+  bookmark never resets eligibility. Cap rewarded new introductions at 10/day.
+- **10 XP for a genuinely due mature review**, regardless of honest Again/Hard/
+  Good/Easy. Learning/relearning repetitions are part of the same cycle, not new
+  rewards; require at least 24 hours between mature-review rewards for a card.
+- Cap total earned XP at **200 per server UTC day** without limiting reviews.
+  Persist policy version and eligibility evidence; timezone changes cannot reset
+  a reward cap. Do not award XP for simply choosing Easy or graduating a card.
+- A streak needs one eligible review/introduction per study day, not an open tab
+  or skip. Use one fixed streak timezone established at enrollment; changing the
+  inbox timezone must not change streak days. Any later streak-timezone change
+  needs an explicit non-retroactive policy before implementation.
+- Grant achievements once for unique introduced occurrences, distinct eligible
+  review days and due-review milestones. Do not label self-ratings as Quranic
+  mastery or tie rewards to claimed retention.
+
+Before UI badges, test concurrent grant attempts, duplicate requests, repeated
+learning steps, re-bookmarking, timezone/DST boundaries, daily caps and replay of
+the same event. Rewards should encourage returning, not discourage honest lapses.
+
+Real-account daily review and **two-different-real-Google-user isolation passed
+on 2026-10-18**; see [hosted evidence](GOOGLE_AUTH.md). Before gamification, observe real review
 history and calibrate parameters before claiming personalized retention; define
 reward rules for extra practice, skips and repeated learning events. This milestone
 awards no XP, streaks or mastery. Reminders, offline review, parameter training,
